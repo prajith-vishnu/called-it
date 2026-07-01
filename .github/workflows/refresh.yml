@@ -1,0 +1,51 @@
+# ============================================================================
+# Daily predictions refresh (the "one serverless job").
+#
+# This is the most locked-down way to run the generator for a GitHub Pages site:
+#   • The GROQ key lives ONLY in GitHub repo Secrets (Settings → Secrets and
+#     variables → Actions → new secret named GROQ_API_KEY). Never in code.
+#   • There is NO public endpoint to spam — the job is cron-triggered.
+#   • It generates + safety-filters predictions, writes predictions.json, and
+#     commits it. GitHub Pages then serves that static file to every visitor.
+#   • No database, no personal data.
+#
+# One run/day with a tiny prompt stays well inside Groq's free tier. The code
+# also respects Groq's rate-limit headers and stops at 80% of budget.
+# ============================================================================
+name: Daily predictions refresh
+
+on:
+  schedule:
+    - cron: "0 9 * * *"      # every day at 09:00 UTC
+  workflow_dispatch: {}       # allow manual runs from the Actions tab
+
+permissions:
+  contents: write             # needed to commit predictions.json
+
+concurrency:
+  group: predictions-refresh  # never run two refreshes at once (no bursting)
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate + safety-filter daily predictions
+        working-directory: server
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}   # the ONLY place the key exists
+        run: node scripts/refresh-cli.js --force
+
+      - name: Commit predictions.json if it changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add predictions.json
+          git diff --cached --quiet || git commit -m "chore: daily predictions refresh [skip ci]"
+          git push

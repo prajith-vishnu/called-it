@@ -1,0 +1,17 @@
+{
+  "name": "called-it-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zero-dependency backend for the Called It prediction game: holds the Groq key, runs a batched generate+resolve refresh per scheduled run (header-aware rate limiting), caches results, serves them read-only.",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "start:no-env-file": "node server.js",
+    "refresh": "node --env-file=.env scripts/refresh-cli.js",
+    "refresh:force": "node --env-file=.env scripts/refresh-cli.js --force"
+  },
+  "dependencies": {}
+}

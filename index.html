@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="default">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0c0c16" />
+<!-- Content Security Policy (defense-in-depth). This is a single self-contained
+     file, so inline script/style are permitted; everything else is locked down:
+     no external script/object, no framing, data only from same origin. On a host
+     that can send headers, also set frame-ancestors + CSP as an HTTP header. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; upgrade-insecure-requests" />
+<meta name="referrer" content="no-referrer" />
+<title>Called It — a free, status-based prediction game</title>
+
+<!-- ============================================================================
+     CALLED IT
+     A free, status-based prediction game inspired by prediction markets
+     (Polymarket / Kalshi) but with ZERO money. The reward is status: points,
+     streaks, ranks, badges, leaderboard position. Nothing is purchasable,
+     nothing is redeemable, nothing has real-world value.
+
+     Single self-contained file. No backend, no APIs, no network, no accounts,
+     no personal data. All state persists in localStorage on this device only.
+
+     -------------------------------------------------------------------------
+     ARCHITECTURE — three clearly separated layers (see the <script> below):
+
+       LAYER 1 · DATA   → the predictions dataset + static config (categories,
+                          ranks, rewards, leaderboard demo entries). Pure data.
+       LAYER 2 · LOGIC  → scoring, streaks, crowd bonus, confidence stake,
+                          ranks, resolution. Pure functions + a thin Store
+                          (the ONLY localStorage touch-point — swap it for an
+                          API client to go online). No DOM in here.
+       LAYER 3 · UI     → rendering, views/tabs, animations, dev panel.
+
+     The layers are decoupled on purpose: to port this to a native app you
+     replace the Store, keep LOGIC almost verbatim, and rebuild only UI.
+============================================================================ -->
+
+<style>
+/* ============================================================================
+   THEMES — a theme is just a set of CSS custom properties. Switch via
+   <html data-theme="...">. Base UI is dark and game-like.
+============================================================================ */
+:root,[data-theme="default"]{
+  --grad:radial-gradient(1200px 800px at 80% -10%,#2a1d52 0,transparent 60%),radial-gradient(1000px 700px at -10% 10%,#15324a 0,transparent 55%),#0c0c16;
+  --bg-0:#0c0c16;--card:#181826;--card-2:#1f1f30;--stroke:#2b2b40;--text:#f4f4fb;--muted:#9a9ab5;
+  --accent:#8b5cf6;--accent-2:#ec4899;--accent-soft:rgba(139,92,246,.16);
+  --good:#34d399;--bad:#fb7185;--gold:#fbbf24;--crowd:rgba(139,92,246,.16);
+}
+[data-theme="sunset"]{--grad:radial-gradient(1200px 800px at 80% -10%,#7c2d12 0,transparent 60%),radial-gradient(1000px 700px at -10% 10%,#831843 0,transparent 55%),#160c12;--bg-0:#160c12;--card:#221420;--card-2:#2a1925;--stroke:#3a2230;--accent:#fb7185;--accent-2:#fb923c;--accent-soft:rgba(251,146,60,.16);--crowd:rgba(251,146,60,.16);}
+[data-theme="mint"]{--grad:radial-gradient(1200px 800px at 80% -10%,#064e3b 0,transparent 60%),radial-gradient(1000px 700px at -10% 10%,#0e7490 0,transparent 55%),#07140f;--bg-0:#07140f;--card:#0f2018;--card-2:#13271d;--stroke:#1e3a2c;--accent:#34d399;--accent-2:#22d3ee;--accent-soft:rgba(52,211,153,.16);--crowd:rgba(52,211,153,.16);}
+[data-theme="midnight"]{--grad:radial-gradient(1200px 800px at 80% -10%,#1e293b 0,transparent 60%),radial-gradient(1000px 700px at -10% 10%,#0f172a 0,transparent 55%),#060a12;--bg-0:#060a12;--card:#0f1623;--card-2:#141d2e;--stroke:#22304a;--accent:#60a5fa;--accent-2:#a78bfa;--accent-soft:rgba(96,165,250,.14);--crowd:rgba(96,165,250,.14);}
+[data-theme="bubblegum"]{--grad:radial-gradient(1200px 800px at 80% -10%,#9d174d 0,transparent 60%),radial-gradient(1000px 700px at -10% 10%,#6d28d9 0,transparent 55%),#140913;--bg-0:#140913;--card:#221122;--card-2:#2b1530;--stroke:#3a1f3e;--accent:#f472b6;--accent-2:#c084fc;--accent-soft:rgba(244,114,182,.16);--crowd:rgba(244,114,182,.16);}
+[data-theme="gold"]{--grad:radial-gradient(1200px 800px at 80% -10%,#713f12 0,transparent 60%),radial-gradient(1000px 700px at -10% 10%,#1c1917 0,transparent 55%),#0e0c08;--bg-0:#0e0c08;--card:#1a1610;--card-2:#221c12;--stroke:#3a2f18;--accent:#fbbf24;--accent-2:#f59e0b;--accent-soft:rgba(251,191,36,.16);--crowd:rgba(251,191,36,.16);}
+
+/* ============================================================================ BASE ============================================================================ */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--grad);background-attachment:fixed;color:var(--text);-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;transition:background .5s ease;display:flex;flex-direction:column;align-items:center;min-height:100%;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+::selection{background:var(--accent);color:#fff;}
+#app{width:100%;max-width:480px;margin:0 auto;min-height:100%;position:relative;padding-bottom:calc(88px + env(safe-area-inset-bottom));}
+
+/* HEADER */
+.app-header{position:sticky;top:0;z-index:40;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,var(--bg-0) 30%,transparent);backdrop-filter:blur(8px);}
+.logo{font-weight:900;font-size:20px;letter-spacing:-.5px;background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent;user-select:none;}
+.logo .dot{color:var(--accent-2);-webkit-text-fill-color:var(--accent-2);}
+.header-spacer{flex:1;}
+.stat-pill{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--stroke);padding:7px 11px;border-radius:999px;font-weight:700;font-size:14px;}
+.stat-pill .label{color:var(--muted);font-weight:600;font-size:12px;}
+#hdrPoints{color:var(--gold);}
+.streak-pill .flame{display:inline-block;animation:flicker 1.4s ease-in-out infinite;}
+.streak-pill.hot{border-color:var(--accent-2);box-shadow:0 0 0 1px var(--accent-2),0 0 18px var(--accent-soft);}
+@keyframes flicker{0%,100%{transform:scale(1) rotate(-2deg);filter:brightness(1);}50%{transform:scale(1.18) rotate(3deg);filter:brightness(1.3);}}
+
+/* VIEWS */
+.view{display:none;padding:6px 16px 24px;animation:fadeUp .35s ease;}
+.view.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.view-title{font-size:26px;font-weight:900;letter-spacing:-.5px;margin:8px 0 2px;}
+.view-sub{color:var(--muted);font-size:14px;margin:0 0 14px;}
+
+/* CHIPS */
+.chips{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:4px 0 12px;margin:0;max-width:100%;scrollbar-width:none;}
+.chips::-webkit-scrollbar{display:none;}
+.chip{flex:0 0 auto;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--stroke);color:var(--muted);font-weight:700;font-size:13px;white-space:nowrap;transition:transform .15s,border-color .15s,color .15s;}
+.chip.active{color:var(--text);border-color:var(--accent);background:var(--accent-soft);}
+.chip:active{transform:scale(.94);}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--stroke);border-radius:20px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;animation:cardIn .4s ease backwards;}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:none;}}
+.card.locked-flash{animation:lockFlash .6s ease;}
+@keyframes lockFlash{0%{box-shadow:0 0 0 0 var(--accent);}40%{box-shadow:0 0 0 3px var(--accent),0 0 26px var(--accent-soft);}100%{box-shadow:0 0 0 0 transparent;}}
+.card-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.cat-tag{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;padding:4px 9px;border-radius:999px;background:var(--card-2);border:1px solid var(--stroke);}
+.close-info{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted);text-align:right;}
+.close-info.soon{color:var(--accent-2);}
+.points-tag{font-size:12px;font-weight:800;color:var(--gold);}
+.q-text{font-size:17px;font-weight:800;line-height:1.3;margin:2px 0 12px;}
+
+/* OPTIONS w/ crowd-belief fill (prediction-market style) */
+.options{display:grid;gap:9px;}
+.option{position:relative;text-align:center;background:var(--card-2);border:1.5px solid var(--stroke);border-radius:14px;padding:13px 15px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;overflow:hidden;transition:transform .12s,border-color .15s,background .15s;}
+.option:active{transform:scale(.97);}
+/* crowd-belief poll bar: colored fill BEHIND the centered text */
+.crowd-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--crowd);border-right:1px solid var(--accent-soft);transition:width .6s cubic-bezier(.2,.9,.2,1);z-index:0;}
+.crowd-fill.fill-yes,.crowd-fill.fill-lead{background:rgba(52,211,153,.30);border-right-color:rgba(52,211,153,.55);}
+.crowd-fill.fill-no{background:rgba(251,113,133,.28);border-right-color:rgba(251,113,133,.55);}
+.crowd-fill.fill-other{background:rgba(148,163,184,.18);border-right-color:rgba(148,163,184,.42);}
+.option > *{position:relative;z-index:1;}
+.option .bullet{width:20px;height:20px;border-radius:50%;flex:0 0 auto;border:2px solid var(--stroke);display:grid;place-items:center;font-size:12px;transition:all .2s;}
+.option .opt-label{flex:0 1 auto;min-width:0;}
+.option .opt-pct{font-size:13px;font-weight:800;color:var(--text);opacity:.82;}
+.option.picked{border-color:var(--accent);}
+.option.picked .bullet{border-color:var(--accent);background:var(--accent);color:#fff;transform:scale(1.05);}
+.option.picked .bullet::after{content:"✓";}
+.option.disabled{pointer-events:none;}
+.option.dim{opacity:.6;}
+.option.correct{border-color:var(--good);}
+.option.correct .bullet{border-color:var(--good);background:var(--good);color:#04150f;}
+.option.correct .bullet::after{content:"✓";}
+.option.wrong{border-color:var(--bad);}
+.option.wrong .bullet{border-color:var(--bad);background:var(--bad);color:#1a0508;}
+.option.wrong .bullet::after{content:"✕";}
+
+.crowd-line{font-size:12px;font-weight:700;color:var(--muted);margin-top:10px;display:flex;align-items:center;gap:6px;}
+.crowd-line b{color:var(--text);}
+
+/* Confidence toggle */
+.conf-row{margin-top:11px;display:flex;align-items:center;gap:9px;}
+.conf-toggle{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:11px;background:var(--card-2);border:1.5px solid var(--stroke);font-weight:800;font-size:12px;color:var(--muted);transition:all .15s;}
+.conf-toggle.on{border-color:var(--gold);color:var(--gold);background:rgba(251,191,36,.12);box-shadow:0 0 16px rgba(251,191,36,.18);}
+.conf-toggle:active{transform:scale(.95);}
+.conf-meta{font-size:11px;color:var(--muted);font-weight:700;}
+.staked-flag{font-size:11px;font-weight:800;color:var(--gold);}
+
+.card-footer{margin-top:12px;font-size:13px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.result-chip{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;}
+.result-chip.correct{background:rgba(52,211,153,.16);color:var(--good);}
+.result-chip.wrong{background:rgba(251,113,133,.16);color:var(--bad);}
+.result-chip.pending{background:var(--accent-soft);color:var(--accent);}
+.result-chip.conf{background:rgba(251,191,36,.16);color:var(--gold);}
+
+.empty{text-align:center;color:var(--muted);padding:50px 20px;}
+.empty .big{font-size:44px;margin-bottom:8px;}
+
+/* sub-tabs */
+.subtabs{display:flex;gap:8px;margin-bottom:14px;}
+.subtab{flex:1;padding:10px;border-radius:12px;background:var(--card);border:1px solid var(--stroke);font-weight:800;color:var(--muted);font-size:14px;}
+.subtab.active{color:var(--text);background:var(--accent-soft);border-color:var(--accent);}
+
+/* streak banner (My Predictions) */
+.streak-banner{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:18px;padding:16px 18px;margin-bottom:16px;color:#fff;}
+.streak-banner .num{font-size:38px;font-weight:900;line-height:1;}
+.streak-banner .lab{font-size:13px;font-weight:800;opacity:.92;}
+.streak-banner .best{margin-left:auto;text-align:right;font-size:12px;font-weight:800;opacity:.92;}
+
+/* PROFILE */
+.profile-hero{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:22px;padding:22px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;}
+.profile-hero .uname{font-size:13px;font-weight:800;opacity:.9;}
+.profile-hero .rank-emoji{font-size:46px;line-height:1;margin-top:6px;}
+.profile-hero .rank-name{font-size:24px;font-weight:900;margin:8px 0 2px;}
+.profile-hero .rank-title{font-size:14px;opacity:.92;font-weight:700;}
+.rank-bar{height:9px;background:rgba(255,255,255,.25);border-radius:999px;margin-top:14px;overflow:hidden;}
+.rank-bar>span{display:block;height:100%;background:#fff;border-radius:999px;transition:width .8s cubic-bezier(.2,.9,.2,1);}
+.rank-next{font-size:12px;font-weight:700;opacity:.9;margin-top:7px;}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-bottom:6px;}
+.stat-box{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:15px;}
+.stat-box .num{font-size:26px;font-weight:900;letter-spacing:-.5px;}
+.stat-box .cap{font-size:12px;font-weight:700;color:var(--muted);margin-top:2px;}
+.stat-box .num.good{color:var(--good);}
+.stat-box .num.gold{color:var(--gold);}
+.stat-box .num.accent{background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.section-h{font-size:16px;font-weight:900;margin:18px 0 10px;}
+.badge-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.badge{aspect-ratio:1;border-radius:16px;background:var(--card);border:1px solid var(--stroke);display:grid;place-items:center;font-size:26px;position:relative;}
+.badge.locked{opacity:.32;filter:grayscale(.7);}
+.badge .lock{position:absolute;bottom:6px;right:7px;font-size:11px;}
+.pick-row{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;max-width:100%;scrollbar-width:none;}
+.pick-row::-webkit-scrollbar{display:none;}
+.pick-item{flex:0 0 auto;padding:9px 14px;border-radius:12px;background:var(--card);border:1.5px solid var(--stroke);font-weight:800;font-size:13px;white-space:nowrap;}
+.pick-item.active{border-color:var(--accent);background:var(--accent-soft);}
+.pick-item.locked{opacity:.4;}
+.swatch{width:14px;height:14px;border-radius:50%;display:inline-block;vertical-align:-2px;margin-right:6px;}
+
+/* REWARDS */
+.reward{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px 14px;margin-bottom:12px;}
+.reward.locked{opacity:.6;}
+.reward .ic{width:48px;height:48px;border-radius:13px;flex:0 0 auto;display:grid;place-items:center;font-size:24px;background:var(--card-2);border:1px solid var(--stroke);}
+.reward .meta{flex:1;min-width:0;}
+.reward .meta .name{font-weight:800;font-size:15px;}
+.reward .meta .desc{color:var(--muted);font-size:12px;font-weight:600;margin-top:2px;}
+.reward .meta .type-tag{font-size:10px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;}
+.reward .status{flex:0 0 auto;font-size:12px;font-weight:800;text-align:right;}
+.reward .status.unlocked{color:var(--good);}
+.reward .status.locked{color:var(--muted);}
+
+/* LEADERBOARD */
+.lb-note{background:var(--card);border:1px dashed var(--stroke);border-radius:14px;padding:12px 14px;color:var(--muted);font-size:12px;font-weight:700;margin-bottom:14px;}
+.lb-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:11px 14px;margin-bottom:12px;}
+.lb-row.you{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 22px var(--accent-soft);}
+.lb-rank{width:26px;font-weight:900;font-size:15px;color:var(--muted);text-align:center;}
+.lb-row.you .lb-rank{color:var(--accent);}
+.lb-av{font-size:26px;}
+.lb-name{font-weight:800;font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lb-name .tag{font-size:10px;color:var(--muted);font-weight:700;margin-left:6px;}
+.lb-pts{font-weight:900;color:var(--gold);font-size:15px;}
+
+/* BOTTOM NAV */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:50;max-width:480px;margin:0 auto;display:flex;padding:8px 4px calc(8px + env(safe-area-inset-bottom));background:rgba(12,12,22,.82);backdrop-filter:blur(14px);border-top:1px solid var(--stroke);}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--muted);font-size:10.5px;font-weight:700;transition:color .2s,transform .15s;}
+.nav button .ni{font-size:20px;transition:transform .2s;}
+.nav button.active{color:var(--text);}
+.nav button.active .ni{transform:translateY(-2px) scale(1.12);}
+.nav button.active::after{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:1px;}
+.nav button:active{transform:scale(.92);}
+
+/* OVERLAYS */
+.celebrate{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:rgba(6,6,14,.72);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .25s;padding:24px;}
+.celebrate.show{opacity:1;pointer-events:auto;}
+.celebrate-card{text-align:center;transform:scale(.7);transition:transform .45s cubic-bezier(.2,1.5,.4,1);max-width:360px;}
+.celebrate.show .celebrate-card{transform:scale(1);}
+.celebrate .kicker{font-size:13px;font-weight:800;letter-spacing:2px;color:var(--accent-2);text-transform:uppercase;}
+.celebrate .headline{font-size:38px;font-weight:900;line-height:1;margin:8px 0 12px;letter-spacing:-1px;background:linear-gradient(90deg,var(--accent),var(--accent-2),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;animation:pop .6s ease;}
+@keyframes pop{0%{transform:scale(.5);}60%{transform:scale(1.12);}100%{transform:scale(1);}}
+.celebrate .big-emoji{font-size:62px;animation:spinPop .7s ease;}
+@keyframes spinPop{0%{transform:rotate(-25deg) scale(0);}70%{transform:rotate(8deg) scale(1.2);}100%{transform:none;}}
+.celebrate .detail{color:var(--text);font-size:15px;font-weight:700;margin-top:6px;}
+.celebrate .points-pop{font-size:22px;font-weight:900;color:var(--gold);margin-top:10px;}
+.celebrate .breakdown{font-size:12px;color:var(--muted);font-weight:700;margin-top:6px;line-height:1.6;}
+.celebrate .tap-hint{color:var(--muted);font-size:12px;margin-top:22px;font-weight:600;}
+#confetti{position:fixed;inset:0;z-index:80;pointer-events:none;}
+.toast{position:fixed;left:50%;bottom:calc(102px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);z-index:70;background:var(--text);color:var(--bg-0);font-weight:800;font-size:14px;padding:11px 18px;border-radius:999px;opacity:0;transition:all .3s;box-shadow:0 10px 30px rgba(0,0,0,.4);pointer-events:none;max-width:88%;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* DEV PANEL */
+.dev-overlay{position:fixed;inset:0;z-index:100;display:none;background:rgba(4,4,10,.86);backdrop-filter:blur(4px);}
+.dev-overlay.show{display:block;}
+.dev-panel{position:absolute;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;background:var(--card);border-top-left-radius:22px;border-top-right-radius:22px;border-top:1px solid var(--stroke);max-height:88vh;display:flex;flex-direction:column;animation:sheetUp .35s cubic-bezier(.2,.9,.2,1);}
+@keyframes sheetUp{from{transform:translateY(100%);}to{transform:none;}}
+.dev-head{padding:16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--stroke);}
+.dev-head h3{margin:0;font-size:17px;font-weight:900;}
+.dev-head .x{margin-left:auto;font-size:22px;color:var(--muted);width:34px;height:34px;border-radius:10px;}
+.dev-actions{display:flex;gap:8px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--stroke);}
+.dev-btn{padding:9px 13px;border-radius:11px;font-weight:800;font-size:12px;background:var(--card-2);border:1px solid var(--stroke);}
+.dev-btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;border:none;}
+.dev-btn.danger{color:var(--bad);border-color:var(--bad);}
+.dev-list{overflow-y:auto;padding:10px 16px 24px;-webkit-overflow-scrolling:touch;}
+.dev-row{padding:11px 0;border-bottom:1px solid var(--stroke);}
+.dev-row .dq{font-weight:700;font-size:14px;margin-bottom:7px;}
+.dev-row .dq .pick-note{color:var(--accent);font-weight:800;font-size:12px;}
+.dev-row .dq .resolved-note{color:var(--good);font-weight:800;font-size:12px;}
+.dev-opts{display:flex;gap:7px;flex-wrap:wrap;}
+.dev-opt{padding:7px 11px;border-radius:9px;font-size:12px;font-weight:700;background:var(--card-2);border:1px solid var(--stroke);}
+.dev-opt.is-correct{border-color:var(--good);background:rgba(52,211,153,.16);color:var(--good);}
+.dev-opt.pending-btn{border-style:dashed;color:var(--muted);}
+.dev-hint{color:var(--muted);font-size:11px;padding:8px 16px 0;}
+.dev-trigger{text-align:center;color:var(--stroke);font-size:11px;padding:4px 0 14px;user-select:none;}
+
+/* ACCOUNT BUTTON + AUTH / PRIVACY MODALS */
+.acct-btn{font-size:16px;line-height:1;padding:7px 11px;}
+.auth-overlay{position:fixed;inset:0;z-index:110;display:none;place-items:center;background:rgba(6,6,14,.74);backdrop-filter:blur(4px);padding:20px;}
+.auth-overlay.show{display:grid;}
+.auth-card{position:relative;width:100%;max-width:380px;background:var(--card);border:1px solid var(--stroke);border-radius:22px;padding:22px;animation:cardIn .3s ease;}
+.auth-x{position:absolute;top:12px;right:12px;font-size:20px;color:var(--muted);width:34px;height:34px;border-radius:10px;}
+.auth-logo{font-weight:900;font-size:22px;letter-spacing:-.5px;text-align:center;margin-bottom:14px;background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.auth-tabs{display:flex;gap:8px;margin-bottom:12px;}
+.auth-tab{flex:1;padding:10px;border-radius:12px;background:var(--card-2);border:1px solid var(--stroke);font-weight:800;color:var(--muted);font-size:14px;}
+.auth-tab.active{color:var(--text);background:var(--accent-soft);border-color:var(--accent);}
+.auth-sub{color:var(--muted);font-size:13px;font-weight:600;margin:0 0 14px;text-align:center;}
+.auth-label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin:10px 2px 5px;}
+.auth-input{width:100%;background:var(--card-2);border:1.5px solid var(--stroke);border-radius:12px;padding:12px 14px;color:var(--text);font-size:15px;font-weight:600;}
+.auth-input:focus{outline:none;border-color:var(--accent);}
+.auth-check{display:flex;align-items:center;gap:9px;margin:13px 2px 4px;font-size:13px;font-weight:700;color:var(--text);}
+.auth-check input{width:18px;height:18px;accent-color:var(--accent);}
+.auth-msg{min-height:18px;font-size:12.5px;font-weight:700;color:var(--bad);margin:10px 2px 0;}
+.auth-msg.ok{color:var(--good);}
+.auth-submit{width:100%;margin-top:14px;padding:13px;border-radius:13px;font-weight:800;font-size:15px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;transition:transform .12s,opacity .2s;}
+.auth-submit:active{transform:scale(.97);}
+.auth-submit:disabled{opacity:.5;}
+.auth-danger{width:100%;margin-top:10px;padding:11px;border-radius:13px;font-weight:800;font-size:13px;color:var(--bad);background:transparent;border:1px solid var(--bad);}
+.auth-fine{font-size:11px;color:var(--muted);font-weight:600;line-height:1.5;margin:14px 2px 0;text-align:center;}
+.auth-fine a{color:var(--accent);}
+.privacy-body{font-size:13px;line-height:1.55;color:var(--muted);max-height:60vh;overflow-y:auto;}
+.privacy-body b{color:var(--text);}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="app-header">
+    <div class="logo">CALLED&nbsp;IT<span class="dot">.</span></div>
+    <div class="header-spacer"></div>
+    <div class="stat-pill streak-pill" id="hdrStreakPill"><span class="flame">🔥</span><span id="hdrStreak">0</span></div>
+    <div class="stat-pill"><span id="hdrPoints">0</span><span class="label">pts</span></div>
+  </header>
+
+  <!-- VIEW: FEED -->
+  <section class="view active" id="view-feed">
+    <h1 class="view-title">Make Your Call</h1>
+    <p class="view-sub">Predict what happens. See what the crowd thinks. Beat them to earn more.</p>
+    <div class="chips" id="feedChips"></div>
+    <div id="feed"></div>
+  </section>
+
+  <!-- VIEW: MY PREDICTIONS -->
+  <section class="view" id="view-picks">
+    <h1 class="view-title">My Predictions</h1>
+    <p class="view-sub">Your locked calls and how they turned out.</p>
+    <div id="streakBanner"></div>
+    <div class="subtabs">
+      <button class="subtab active" data-subtab="pending">⏳ Pending</button>
+      <button class="subtab" data-subtab="resolved">✅ Resolved</button>
+    </div>
+    <div id="picksList"></div>
+  </section>
+
+  <!-- VIEW: PROFILE -->
+  <section class="view" id="view-profile">
+    <h1 class="view-title">Profile</h1>
+    <p class="view-sub">Your status: rank, stats, and the rewards you've unlocked.</p>
+    <div id="profileBody"></div>
+  </section>
+
+  <!-- VIEW: REWARDS -->
+  <section class="view" id="view-rewards">
+    <h1 class="view-title">Rewards</h1>
+    <p class="view-sub">Cosmetic flair you unlock by hitting milestones. Never bought, never spent, never for sale.</p>
+    <div id="rewardsBody"></div>
+  </section>
+
+  <!-- VIEW: LEADERBOARD -->
+  <section class="view" id="view-board">
+    <h1 class="view-title">Leaderboard</h1>
+    <p class="view-sub">Where you stack up. Pure bragging rights.</p>
+    <div id="boardBody"></div>
+  </section>
+
+  <!-- hidden dev-panel trigger: tap 5x (also Ctrl/Cmd+Shift+D) -->
+  <div class="dev-trigger"><a href="#" id="footerPrivacy" style="color:inherit;text-decoration:underline">Privacy &amp; Terms</a> · no account · no personal data</div>
+  <div class="dev-trigger" id="devTrigger">CALLED IT · v1.0 · local-only prototype</div>
+</div>
+
+<nav class="nav" id="nav">
+  <button class="active" data-view="feed"><span class="ni">🏠</span>Feed</button>
+  <button data-view="picks"><span class="ni">🎟️</span>Picks</button>
+  <button data-view="board"><span class="ni">🏆</span>Ranks</button>
+  <button data-view="profile"><span class="ni">👤</span>Profile</button>
+  <button data-view="rewards"><span class="ni">✨</span>Rewards</button>
+</nav>
+
+<canvas id="confetti"></canvas>
+<div class="celebrate" id="celebrate"><div class="celebrate-card" id="celebrateCard"></div></div>
+<div class="toast" id="toast"></div>
+
+<div class="dev-overlay" id="devOverlay">
+  <div class="dev-panel">
+    <div class="dev-head">
+      <h3>🛠️ Dev Panel</h3>
+      <div style="font-size:12px;color:var(--muted);font-weight:700">Resolve predictions</div>
+      <button class="x" id="devClose">✕</button>
+    </div>
+    <div class="dev-actions">
+      <button class="dev-btn primary" id="devWinDemo">🎉 Win my pending picks</button>
+      <button class="dev-btn" id="devRandom">🎲 Resolve 5 random</button>
+      <button class="dev-btn danger" id="devReset">↺ Reset progress</button>
+    </div>
+    <div class="dev-hint">Tap an option to set it as the correct answer (method = <b>admin</b>). Scored picks celebrate automatically. Tap “Pending” to undo. <i>Crowd-vote resolution is stubbed for the future — see comments.</i></div>
+    <div class="dev-list" id="devList"></div>
+  </div>
+</div>
+
+<!-- AGE GATE (13+) — shown once on first load, remembered locally. Blocks the app
+     until confirmed. No date of birth is stored — only a yes/no flag in localStorage. -->
+<div class="auth-overlay" id="ageOverlay">
+  <div class="auth-card">
+    <div class="auth-logo">CALLED&nbsp;IT<span style="color:var(--accent-2)">.</span></div>
+    <p class="auth-sub">A free, for-fun prediction game. Cosmetic points only — no money, no prizes.</p>
+    <div class="privacy-body" style="margin-bottom:6px">
+      <p><b>You must be 13 or older to play.</b></p>
+      <p>No account, no login, no personal data. Your progress is saved only in this browser.</p>
+    </div>
+    <button class="auth-submit" id="ageConfirm">I'm 13 or older — let's play</button>
+    <p class="auth-fine"><a href="#" id="openPrivacy">Privacy &amp; Terms</a></p>
+  </div>
+</div>
+
+<!-- PRIVACY / TERMS MODAL (accurate for the localStorage-only, no-account app) -->
+<div class="auth-overlay" id="privacyOverlay">
+  <div class="auth-card">
+    <button class="auth-x" id="privacyClose">✕</button>
+    <h3 style="margin:4px 0 10px">Privacy &amp; Terms</h3>
+    <div class="privacy-body">
+      <p><b>For ages 13+.</b> Called It is a free, for-fun prediction game. Points, ranks, and cosmetics are status only — no money, nothing for sale, nothing redeemable.</p>
+      <p><b>No personal data is collected.</b> There are no accounts, no login, no email, no names, no location, no device IDs, no analytics, and no third-party trackers.</p>
+      <p><b>Your progress stays on your device.</b> Your picks, points, streak, and cosmetics are saved only in this browser's localStorage. Clearing your browser data resets the game.</p>
+      <p><b>No user-to-user contact.</b> You only choose from preset options — there is no chat, no messaging, and no free-text input to moderate. The leaderboard rivals are illustrative demo players.</p>
+      <p>Daily predictions are generated on a server that holds no user data; the app only reads a shared list of predictions.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ════════════════════════════════════════════════════════════════════════════
+   LAYER 1 · DATA
+   Pure content + static config. Edit freely. In a real app this would arrive
+   from a backend; keeping it as plain data means the source can be swapped
+   without touching LOGIC or UI.
+   ════════════════════════════════════════════════════════════════════════════ */
+const DATA = (() => {
+
+  const CATEGORIES = {
+    music:    { name:"Music",               emoji:"🎵", color:"#f472b6" },
+    movies:   { name:"Movies & TV",         emoji:"🎬", color:"#60a5fa" },
+    internet: { name:"Internet & Creators", emoji:"🌐", color:"#34d399" },
+    awards:   { name:"Awards",              emoji:"🏆", color:"#fbbf24" },
+    trends:   { name:"Viral Trends",        emoji:"🔥", color:"#fb923c" },
+    general:  { name:"Will It Happen?",     emoji:"🔮", color:"#a78bfa" },
+  };
+
+  // Rank ladder ordered by points required. Rank is a function of points.
+  const RANKS = [
+    { name:"Rookie",     emoji:"🌱", min:0,    title:"Just getting started" },
+    { name:"Caller",     emoji:"📣", min:150,  title:"You've got a knack for this" },
+    { name:"Forecaster", emoji:"📡", min:450,  title:"Reading the signals" },
+    { name:"Oracle",     emoji:"🔮", min:1000, title:"The future whispers to you" },
+    { name:"Prophet",    emoji:"🪬", min:2000, title:"You see it before it happens" },
+    { name:"Legend",     emoji:"🛸", min:3500, title:"Reality bends to your calls" },
+  ];
+
+  // Cosmetic rewards. UNLOCKED by reaching milestones — NEVER purchased, never
+  // spent, never sold. unlock.kind ∈ {points, streak, correct} (all monotonic
+  // so unlock state is sticky and derivable from peaks).
+  const REWARDS = [
+    // themes
+    { id:"th_sunset",   type:"theme", name:"Sunset Pop",     emoji:"🌇", value:"sunset",    unlock:{kind:"points",value:150},  desc:"Warm coral & tangerine." },
+    { id:"th_mint",     type:"theme", name:"Mint Fresh",     emoji:"🌿", value:"mint",      unlock:{kind:"points",value:300},  desc:"Cool, clean green." },
+    { id:"th_midnight", type:"theme", name:"Midnight Mono",  emoji:"🌃", value:"midnight",  unlock:{kind:"points",value:600},  desc:"Sleek deep-blue night." },
+    { id:"th_bubblegum",type:"theme", name:"Bubblegum",      emoji:"🍬", value:"bubblegum", unlock:{kind:"points",value:1000}, desc:"Loud pink & purple." },
+    { id:"th_gold",     type:"theme", name:"Gold Status",    emoji:"🥇", value:"gold",      unlock:{kind:"points",value:2000}, desc:"Pure prestige." },
+    // titles
+    { id:"ti_lucky",    type:"title", name:"Lucky Guesser",   emoji:"🍀", value:"Lucky Guesser",   unlock:{kind:"correct",value:1},  desc:"For your first correct call." },
+    { id:"ti_trend",    type:"title", name:"Trend Whisperer", emoji:"🌬️", value:"Trend Whisperer", unlock:{kind:"points",value:400}, desc:"Profile title." },
+    { id:"ti_crowd",    type:"title", name:"Crowd Slayer",    emoji:"⚔️", value:"Crowd Slayer",    unlock:{kind:"streak",value:5},   desc:"For a 5-call streak." },
+    { id:"ti_oracle",   type:"title", name:"Certified Oracle",emoji:"🧿", value:"Certified Oracle",unlock:{kind:"points",value:1000},desc:"Profile title." },
+    { id:"ti_prophet",  type:"title", name:"The Prophet",     emoji:"♾️", value:"The Prophet",     unlock:{kind:"points",value:2000},desc:"Profile title." },
+    // badges
+    { id:"bg_streak",   type:"badge", name:"Hot Streak",  emoji:"🔥", value:"🔥", unlock:{kind:"streak",value:3},   desc:"Hit a 3-call streak." },
+    { id:"bg_sharp",    type:"badge", name:"Sharpshooter", emoji:"🎯", value:"🎯", unlock:{kind:"correct",value:10}, desc:"10 correct calls." },
+    { id:"bg_rocket",   type:"badge", name:"Unstoppable", emoji:"🚀", value:"🚀", unlock:{kind:"streak",value:10},  desc:"Hit a 10-call streak." },
+    { id:"bg_star",     type:"badge", name:"Star Caller", emoji:"🌟", value:"🌟", unlock:{kind:"points",value:800}, desc:"Reach 800 points." },
+    { id:"bg_crown",    type:"badge", name:"Crowned",     emoji:"👑", value:"👑", unlock:{kind:"points",value:1500},desc:"Reach 1,500 points." },
+    { id:"bg_brain",    type:"badge", name:"Big Brain",   emoji:"🧠", value:"🧠", unlock:{kind:"correct",value:25}, desc:"25 correct calls." },
+  ];
+
+  // Preset usernames (NO free text → nothing to moderate). A future moderated
+  // custom-username flow would attach in UI.renderProfile (see comment there).
+  const USERNAMES = ["Anonymous Oracle","Mystery Caller","Quiet Forecaster","Crystal Ball Kid",
+    "Hot Take Hermit","Lowkey Prophet","Chaos Caller","Signal Seeker","Vibe Analyst","Future Goblin"];
+
+  // Illustrative DEMO leaderboard rivals. Clearly fake & fixed; the user's own
+  // progression is fully real and inserted live by points.
+  const DEMO_LEADERBOARD = [
+    { name:"SignalBot",    avatar:"🤖", points:3120 },
+    { name:"NightOwl",     avatar:"🦉", points:1840 },
+    { name:"InkUnderdog",  avatar:"🐙", points:1180 },
+    { name:"MmeFuture",    avatar:"🔮", points:910  },
+    { name:"CleanSweep",   avatar:"🧹", points:620  },
+    { name:"LowKeyLegend", avatar:"🦄", points:380  },
+    { name:"FreshTake",    avatar:"🐣", points:160  },
+    { name:"IceCold",      avatar:"🧊", points:55   },
+  ];
+
+  /* ----------------------------------------------------------------------------
+     PREDICTIONS (~50). Each item:
+       id          unique string
+       question    SPECIFIC + TIME-BOUND so it resolves cleanly (the
+                   "resolvable question" rule — every question names a concrete
+                   outcome and a deadline).
+       category    key of CATEGORIES
+       options     2–4 preset choices (no free text anywhere)
+       closeDate   ISO date the pick locks (see EVERGREEN note in LOGIC)
+       pointValue  base points for a correct call
+       crowd       per-option pick tallies (parallel to options), seeded with
+                   small illustrative starting numbers; the live bar is base +
+                   the user's own pick
+       resolution  "pending" by default (real outcome set via the dev panel /
+                   future crowd vote)
+  ---------------------------------------------------------------------------- */
+  const PREDICTIONS = [
+    // ── Music ──
+    { id:"m1", category:"music", question:"Will a solo female artist hold the #1 spot on the global singles chart on Aug 31, 2026?", options:["Yes","No"], crowd:[210,90], closeDate:"2026-08-31", pointValue:20, resolution:"pending" },
+    { id:"m2", category:"music", question:"Will any K-pop group announce a 2027 world stadium tour before Oct 1, 2026?", options:["Yes","No"], crowd:[140,160], closeDate:"2026-09-30", pointValue:25, resolution:"pending" },
+    { id:"m3", category:"music", question:"Which artist releases a new full studio album first, by Dec 31, 2026?", options:["Rihanna","Adele","Frank Ocean","None of them"], crowd:[80,120,60,210], closeDate:"2026-12-31", pointValue:45, resolution:"pending" },
+    { id:"m4", category:"music", question:"Will any single track pass 200M Spotify streams in one week before Dec 31, 2026?", options:["Yes","No"], crowd:[95,150], closeDate:"2026-12-31", pointValue:30, resolution:"pending" },
+    { id:"m5", category:"music", question:"Will a song that went viral on TikTok reach the global Top 10 by Sep 30, 2026?", options:["Yes","No"], crowd:[265,70], closeDate:"2026-09-30", pointValue:15, resolution:"pending" },
+    { id:"m6", category:"music", question:"Will a major artist surprise-drop an album (announced <48h ahead) before Nov 1, 2026?", options:["Yes","No"], crowd:[175,110], closeDate:"2026-11-01", pointValue:20, resolution:"pending" },
+    { id:"m7", category:"music", question:"Which genre has the most songs in the year-end global Top 100 for 2026?", options:["Pop","Hip-hop","Latin","K-pop"], crowd:[185,120,95,70], closeDate:"2026-12-31", pointValue:40, resolution:"pending" },
+    { id:"m8", category:"music", question:"Will an AI-voice or posthumous track chart in the global Top 40 by Dec 31, 2026?", options:["Yes","No"], crowd:[120,150], closeDate:"2026-12-31", pointValue:30, resolution:"pending" },
+
+    // ── Movies & TV ──
+    { id:"v1", category:"movies", question:"Will any film released in 2026 gross over $1B worldwide by Dec 31, 2026?", options:["Yes","No"], crowd:[250,70], closeDate:"2026-12-31", pointValue:15, resolution:"pending" },
+    { id:"v2", category:"movies", question:"Will a streaming-series finale top 100M views in its first week by Dec 31, 2026?", options:["Yes","No"], crowd:[150,120], closeDate:"2026-12-31", pointValue:25, resolution:"pending" },
+    { id:"v3", category:"movies", question:"Which studio has the biggest single domestic opening weekend in 2026?", options:["Disney / Marvel","Universal","Warner Bros","An indie / A24"], crowd:[200,120,90,40], closeDate:"2026-12-31", pointValue:40, resolution:"pending" },
+    { id:"v4", category:"movies", question:"Will a video-game adaptation series get a renewal announcement before Oct 1, 2026?", options:["Yes","No"], crowd:[180,90], closeDate:"2026-10-01", pointValue:20, resolution:"pending" },
+    { id:"v5", category:"movies", question:"Will an animated film top the domestic weekend box office at least once before Dec 31, 2026?", options:["Yes","No"], crowd:[210,80], closeDate:"2026-12-31", pointValue:20, resolution:"pending" },
+    { id:"v6", category:"movies", question:"Will a major franchise officially announce a reboot before Nov 30, 2026?", options:["Yes","No"], crowd:[140,130], closeDate:"2026-11-30", pointValue:25, resolution:"pending" },
+    { id:"v7", category:"movies", question:"Will any 2026 sequel out-gross its predecessor's opening weekend?", options:["Yes","No"], crowd:[150,120], closeDate:"2026-12-31", pointValue:30, resolution:"pending" },
+    { id:"v8", category:"movies", question:"Will one film hold the #1 box-office spot for 3+ straight weekends in 2026?", options:["Yes","No"], crowd:[120,160], closeDate:"2026-12-31", pointValue:30, resolution:"pending" },
+    { id:"v9", category:"movies", question:"Will a major streaming service raise its standard monthly price before Dec 31, 2026?", options:["Yes","No"], crowd:[200,80], closeDate:"2026-12-31", pointValue:20, resolution:"pending" },
+
+    // ── Internet & Creators ──
+    { id:"i1", category:"internet", question:"Will any creator pass 400M subscribers on a single platform by Dec 31, 2026?", options:["Yes","No"], crowd:[110,170], closeDate:"2026-12-31", pointValue:30, resolution:"pending" },
+    { id:"i2", category:"internet", question:"Will MrBeast upload a video that hits 100M views within 30 days, before Dec 31, 2026?", options:["Yes","No"], crowd:[200,90], closeDate:"2026-12-31", pointValue:20, resolution:"pending" },
+    { id:"i3", category:"internet", question:"Which platform adds the most new monthly active users in 2026?", options:["TikTok","YouTube","Instagram","A brand-new app"], crowd:[180,150,90,60], closeDate:"2026-12-31", pointValue:40, resolution:"pending" },
+    { id:"i4", category:"internet", question:"Will a podcast episode become a platform's most-viewed video of any month by Dec 31, 2026?", options:["Yes","No"], crowd:[150,120], closeDate:"2026-12-31", pointValue:25, resolution:"pending" },
+    { id:"i5", category:"internet", question:"Will a livestream break 8M concurrent viewers by Dec 31, 2026?", options:["Yes","No"], crowd:[110,160], closeDate:"2026-12-31", pointValue:35, resolution:"pending" },
+    { id:"i6", category:"internet", question:"Will an AI virtual creator sign a major brand deal before Nov 30, 2026?", options:["Yes","No"], crowd:[130,140], closeDate:"2026-11-30", pointValue:25, resolution:"pending" },
+    { id:"i7", category:"internet", question:"Will a top creator announce a major career pivot (music, acting, office) by Dec 31, 2026?", options:["Yes","No"], crowd:[160,120], closeDate:"2026-12-31", pointValue:25, resolution:"pending" },
+    { id:"i8", category:"internet", question:"Which content format gets the biggest engagement boost in 2026?", options:["Long-form video","Short clips","Live shopping","Podcasts"], crowd:[140,170,80,90], closeDate:"2026-12-31", pointValue:40, resolution:"pending" },
+
+    // ── Awards ──
+    { id:"a1", category:"awards", question:"Will a streaming-distributed film win Best Picture at the 2027 ceremony?", options:["Yes","No"], crowd:[140,140], closeDate:"2027-03-15", pointValue:25, resolution:"pending" },
+    { id:"a2", category:"awards", question:"Will a first-time nominee win the top Album-of-the-Year award at the next major music ceremony?", options:["Yes","No"], crowd:[120,150], closeDate:"2027-02-15", pointValue:30, resolution:"pending" },
+    { id:"a3", category:"awards", question:"Will the next major awards broadcast's viewership rise vs. the prior year?", options:["Yes","No"], crowd:[170,110], closeDate:"2027-02-15", pointValue:20, resolution:"pending" },
+    { id:"a4", category:"awards", question:"Which category produces the biggest upset at the next major music awards?", options:["Best New Artist","Record of the Year","Album of the Year","Song of the Year"], crowd:[150,90,80,70], closeDate:"2027-02-15", pointValue:45, resolution:"pending" },
+    { id:"a5", category:"awards", question:"Will any moment from the next major awards show trend #1 on a social platform within 24h?", options:["Yes","No"], crowd:[230,70], closeDate:"2027-02-15", pointValue:15, resolution:"pending" },
+    { id:"a6", category:"awards", question:"Will a sequel or franchise film win a top award at the next major film ceremony?", options:["Yes","No"], crowd:[150,120], closeDate:"2027-03-15", pointValue:25, resolution:"pending" },
+
+    // ── Viral Trends ──
+    { id:"t1", category:"trends", question:"Will a dance challenge tied to a specific song trend worldwide before Sep 30, 2026?", options:["Yes","No"], crowd:[240,70], closeDate:"2026-09-30", pointValue:15, resolution:"pending" },
+    { id:"t2", category:"trends", question:"Which aesthetic has the most new hashtag posts on TikTok by Dec 31, 2026?", options:["Y2K","Cottagecore","Clean girl","Something brand new"], crowd:[160,90,120,80], closeDate:"2026-12-31", pointValue:40, resolution:"pending" },
+    { id:"t3", category:"trends", question:"Will a single social post exceed 5M likes within 24 hours before Dec 31, 2026?", options:["Yes","No"], crowd:[200,90], closeDate:"2026-12-31", pointValue:20, resolution:"pending" },
+    { id:"t4", category:"trends", question:"Will a food or drink item sell out nationally after going viral, before Nov 1, 2026?", options:["Yes","No"], crowd:[170,110], closeDate:"2026-11-01", pointValue:20, resolution:"pending" },
+    { id:"t5", category:"trends", question:"Which gadget gets the most viral buzz in 2026?", options:["Smart ring","AI glasses","Retro camera","Mini projector"], crowd:[120,170,80,70], closeDate:"2026-12-31", pointValue:40, resolution:"pending" },
+    { id:"t6", category:"trends", question:"Will a 2000s fashion trend re-enter the mainstream by Sep 30, 2026?", options:["Yes","No"], crowd:[210,90], closeDate:"2026-09-30", pointValue:20, resolution:"pending" },
+    { id:"t7", category:"trends", question:"Will a non-celebrity's video out-perform the year's top celebrity video by Dec 31, 2026?", options:["Yes","No"], crowd:[150,130], closeDate:"2026-12-31", pointValue:25, resolution:"pending" },
+    { id:"t8", category:"trends", question:"Will a new slang term be added to a major dictionary by Dec 31, 2026?", options:["Yes","No"], crowd:[180,110], closeDate:"2026-12-31", pointValue:20, resolution:"pending" },
+
+    // ── Will It Happen? (general) ──
+    { id:"g1", category:"general", question:"Will a private company launch humans to orbit by Dec 31, 2026?", options:["Yes","No"], crowd:[150,130], closeDate:"2026-12-31", pointValue:30, resolution:"pending" },
+    { id:"g2", category:"general", question:"Will a top phone brand announce a new foldable or rollable device before Nov 30, 2026?", options:["Yes","No"], crowd:[190,100], closeDate:"2026-11-30", pointValue:20, resolution:"pending" },
+    { id:"g3", category:"general", question:"Will an AI feature be the headline of a major tech keynote in 2026?", options:["Yes","No"], crowd:[230,70], closeDate:"2026-12-31", pointValue:15, resolution:"pending" },
+    { id:"g4", category:"general", question:"Will two rival brands launch an official collab product before Dec 31, 2026?", options:["Yes","No"], crowd:[200,80], closeDate:"2026-12-31", pointValue:20, resolution:"pending" },
+    { id:"g5", category:"general", question:"Will a major tour ticket presale crash a big ticketing site by Dec 31, 2026?", options:["Yes","No"], crowd:[210,80], closeDate:"2026-12-31", pointValue:15, resolution:"pending" },
+    { id:"g6", category:"general", question:"Will a sports underdog (lowest seed) win a major championship in 2026?", options:["Yes","No"], crowd:[110,160], closeDate:"2026-12-31", pointValue:35, resolution:"pending" },
+    { id:"g7", category:"general", question:"Will a brand or movie mascot/character trend worldwide by Dec 31, 2026?", options:["Yes","No"], crowd:[160,120], closeDate:"2026-12-31", pointValue:25, resolution:"pending" },
+    { id:"g8", category:"general", question:"Will a new official emoji set be released by Dec 31, 2026?", options:["Yes","No"], crowd:[200,100], closeDate:"2026-12-31", pointValue:20, resolution:"pending" },
+    { id:"g9", category:"general", question:"Will a limited sneaker resell for 5x retail within a week of dropping, by Dec 31, 2026?", options:["Yes","No"], crowd:[170,120], closeDate:"2026-12-31", pointValue:25, resolution:"pending" },
+    { id:"g10",category:"general", question:"Will a long-running fan theory about a major franchise be officially confirmed by Dec 31, 2026?", options:["Yes","No"], crowd:[110,160], closeDate:"2026-12-31", pointValue:30, resolution:"pending" },
+  ];
+
+  const byId = {};
+  PREDICTIONS.forEach(p => { byId[p.id] = p; });
+
+  return { CATEGORIES, RANKS, REWARDS, USERNAMES, DEMO_LEADERBOARD, PREDICTIONS, byId };
+})();
+
+/* ════════════════════════════════════════════════════════════════════════════
+   LAYER 2 · LOGIC
+   Store (persistence adapter) + Game (pure scoring/streak/rank logic) +
+   Resolution (admin now, crowd-vote architected for later). No DOM in here.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ---- Store: the ONLY place that touches localStorage. ----------------------
+   To go online: replace load()/save() with API calls. The state SHAPE below is
+   the contract the rest of the app depends on. Everything score-related is
+   DERIVED by Game (never stored) so it can't drift out of sync.
+
+   Persisted state:
+     username     string|null                       chosen preset handle (local)
+     picks        { id:{ option, confident, at } }   the user's locked calls
+     resolutions  { id:{ answer, at, method } }       known outcomes (+ source)
+     activeTheme  string                              equipped theme key
+     activeTitle  string|null                          equipped title text
+     celebrated   [id]                                wins already celebrated
+     seenUnlocks  [rewardId]                          reward unlocks celebrated
+     seenRank     string                              highest rank celebrated
+----------------------------------------------------------------------------- */
+const Store = (() => {
+  const KEY = "calledit.v1.state";
+  function defaultState(){
+    return { username:null, picks:{}, resolutions:{}, activeTheme:"default",
+             activeTitle:null, celebrated:[], seenUnlocks:[], seenRank:"Rookie" };
+  }
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return defaultState();
+      return Object.assign(defaultState(), JSON.parse(raw));
+    }catch(e){ console.warn("Could not read save; starting fresh.", e); return defaultState(); }
+  }
+  function save(state){
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch(e){ console.warn("Could not persist save.", e); }
+  }
+  function reset(){ try{ localStorage.removeItem(KEY); }catch(e){} return defaultState(); }
+  return { load, save, reset, defaultState };
+})();
+
+/* ---- Game: pure logic. No DOM, no storage. Functions over (state, DATA). --- */
+const Game = (() => {
+
+  /* Confidence stakes per period (the only way to LOSE points; opt-in). */
+  const CONFIDENCE_PER_WEEK = 3;
+
+  /* EVERGREEN_DEMO: sample close dates are anchored in 2026–2027 so the demo
+     always works "now". When on, dates are shifted on load so the earliest one
+     is ~3 days out and the rest keep their relative spacing — the feed always
+     has fresh "closing soon" cards whenever the file is opened. Set false to
+     use literal closeDate strings (what a real backend would send).            */
+  const EVERGREEN_DEMO = true;
+  const DAY = 86400000;
+  const SHIFT = (() => {
+    if(!EVERGREEN_DEMO) return 0;
+    const times = DATA.PREDICTIONS.map(p => new Date(p.closeDate+"T23:59:59").getTime());
+    return (Date.now() + 3*DAY) - Math.min(...times);
+  })();
+
+  function closeTime(pred){ return new Date(pred.closeDate+"T23:59:59").getTime() + SHIFT; }
+  function isClosed(pred){ return Date.now() > closeTime(pred); }
+  function isResolved(state, id){ return !!state.resolutions[id]; }
+  function daysUntilClose(pred){ return Math.ceil((closeTime(pred) - Date.now())/DAY); }
+
+  /* Effective crowd tallies = seeded base + the user's own pick (the live
+     "as people pick" nudge in a single-player local prototype). Returns counts,
+     total, and per-option fractions (parallel to pred.options).                */
+  function effectiveCrowd(state, pred){
+    const counts = pred.crowd.slice();
+    const pick = state.picks[pred.id];
+    if(pick){ const i = pred.options.indexOf(pick.option); if(i>=0) counts[i]+=1; }
+    const total = counts.reduce((a,b)=>a+b,0) || 1;
+    return { counts, total, pct: counts.map(c=>c/total) };
+  }
+
+  /* Streak bonus: small at 3, larger at 5, biggest at 10+. Awarded per correct
+     call based on the streak length reached.                                   */
+  function streakBonus(streak){
+    if(streak>=10) return 50;
+    if(streak>=5)  return 25;
+    if(streak>=3)  return 10;
+    return 0;
+  }
+
+  /* Beat-the-crowd bonus: only if the user did NOT pick the crowd favorite.
+     Scales inversely with how popular their (correct) pick was — the more
+     contrarian and correct, the bigger the bonus. Mirrors "buying low".        */
+  function beatBonus(pred, pickPct, leaderPct){
+    if(pickPct >= leaderPct - 1e-9) return 0;          // picked the favorite → no bonus
+    return Math.round(pred.pointValue * (1 - pickPct)); // unpopular + right → big
+  }
+
+  /* ISO-week key (e.g. "2026-W26") used for the confidence-per-period limit. */
+  function isoWeekKey(ts){
+    const d = new Date(ts);
+    const day = (d.getUTCDay()+6)%7;
+    d.setUTCDate(d.getUTCDate()-day+3);
+    const firstThu = new Date(Date.UTC(d.getUTCFullYear(),0,4));
+    const week = 1 + Math.round(((d-firstThu)/DAY - 3 + ((firstThu.getUTCDay()+6)%7))/7);
+    return d.getUTCFullYear()+"-W"+String(week).padStart(2,"0");
+  }
+  function confidenceUsedThisWeek(state){
+    const wk = isoWeekKey(Date.now());
+    let n=0;
+    for(const id in state.picks){ const p=state.picks[id]; if(p.confident && isoWeekKey(p.at)===wk) n++; }
+    return n;
+  }
+  function confidenceLeft(state){ return Math.max(0, CONFIDENCE_PER_WEEK - confidenceUsedThisWeek(state)); }
+
+  /* THE SCORER. Recomputes ALL derived stats from scratch from picks +
+     resolutions, processing resolved-with-pick events in resolution order.
+     Recomputing (vs incrementing) means undo/reset can never desync points or
+     streaks. This is the function you'd lift almost verbatim into a server.    */
+  function computeDerived(state){
+    const events = Object.keys(state.resolutions)
+      .filter(id => state.picks[id] !== undefined && DATA.byId[id])
+      .map(id => ({ id, answer: state.resolutions[id].answer, at: state.resolutions[id].at||0 }))
+      .sort((a,b) => a.at - b.at);
+
+    let points=0, peakPoints=0, streak=0, peakStreak=0, correct=0;
+    let beatWins=0;                 // contrarian correct calls (for flavor/stats)
+    const per = {};                 // id -> full score breakdown
+
+    for(const ev of events){
+      const pred = DATA.byId[ev.id];
+      const pick = state.picks[ev.id];
+      const isCorrect = pick.option === ev.answer;
+      const confident = !!pick.confident;
+      let base=0, beat=0, sBonus=0, cBonus=0, cLoss=0;
+
+      if(isCorrect){
+        streak++; peakStreak = Math.max(peakStreak, streak); correct++;
+        base = pred.pointValue;
+        const ec = effectiveCrowd(state, pred);
+        const i = pred.options.indexOf(pick.option);
+        const pickPct = i>=0 ? ec.pct[i] : 1;
+        const leaderPct = Math.max(...ec.pct);
+        beat = beatBonus(pred, pickPct, leaderPct);
+        if(beat>0) beatWins++;
+        sBonus = streakBonus(streak);
+        if(confident) cBonus = pred.pointValue;                 // confident + right → matched stake
+        points += base + beat + sBonus + cBonus;
+        peakPoints = Math.max(peakPoints, points);
+      } else {
+        streak = 0;
+        if(confident){ cLoss = Math.min(pred.pointValue, points); points -= cLoss; } // only way to lose
+      }
+      per[ev.id] = { isCorrect, confident, base, beat, sBonus, cBonus, cLoss,
+                     streakAt: streak, net: base+beat+sBonus+cBonus-cLoss };
+    }
+
+    const totalResolved = events.length;
+    const accuracy = totalResolved ? Math.round(correct/totalResolved*100) : 0;
+    return {
+      points, peakPoints, streak, peakStreak, correct, beatWins,
+      totalResolved, accuracy, per,
+      rank: rankFor(points), nextRank: nextRankFor(points),
+      confidenceLeft: confidenceLeft(state),
+    };
+  }
+
+  function rankFor(points){ let r=DATA.RANKS[0]; for(const x of DATA.RANKS) if(points>=x.min) r=x; return r; }
+  function rankIndex(name){ return DATA.RANKS.findIndex(r=>r.name===name); }
+  function nextRankFor(points){ return DATA.RANKS.find(r=>r.min>points) || null; }
+  function rankProgress(points){ const c=rankFor(points), n=nextRankFor(points); return n ? (points-c.min)/(n.min-c.min) : 1; }
+
+  /* Which rewards are unlocked, derived from monotonic peaks → sticky. */
+  function unlockedRewards(d){
+    return DATA.REWARDS.filter(r=>{
+      if(r.unlock.kind==="points")  return d.peakPoints>=r.unlock.value;
+      if(r.unlock.kind==="streak")  return d.peakStreak>=r.unlock.value;
+      if(r.unlock.kind==="correct") return d.correct   >=r.unlock.value;
+      return false;
+    }).map(r=>r.id);
+  }
+  function unlockProgressText(reward, d){
+    const u = reward.unlock;
+    if(u.kind==="points")  return `Reach ${u.value} pts (${Math.min(d.peakPoints,u.value)}/${u.value})`;
+    if(u.kind==="streak")  return `Hit a ${u.value} streak (best ${d.peakStreak})`;
+    if(u.kind==="correct") return `${u.value} correct calls (${Math.min(d.correct,u.value)}/${u.value})`;
+    return "";
+  }
+
+  return {
+    CONFIDENCE_PER_WEEK, EVERGREEN_DEMO,
+    closeTime, isClosed, isResolved, daysUntilClose, effectiveCrowd,
+    streakBonus, beatBonus, isoWeekKey, confidenceLeft,
+    computeDerived, rankFor, rankIndex, nextRankFor, rankProgress,
+    unlockedRewards, unlockProgressText,
+  };
+})();
+
+/* ---- Resolution: how the app learns outcomes. ------------------------------
+   PRIMARY (now): admin resolution via the dev panel → resolveByAdmin().
+   FUTURE (architected, NOT live): crowd-vote resolution. The scorer only reads
+   state.resolutions[id] = { answer, at, method }, so a new resolution SOURCE
+   can be added without touching scoring. The stubs below show exactly where a
+   "players vote after close, majority decides" flow would attach. No moderation
+   surface exists yet because there is no free text anywhere.                   */
+const Resolution = (() => {
+  function resolveByAdmin(state, id, answer, method){
+    if(answer===null) delete state.resolutions[id];
+    else state.resolutions[id] = { answer, at: Date.now(), method: method || "admin" };
+  }
+
+  // ---- crowd-vote stubs (future; intentionally inert) ----
+  // A real implementation would: open voting only after isClosed(pred); collect
+  // one preset-option vote per device/user (no free text); then once a quorum is
+  // reached, set resolution via the SAME shape with method:"crowd".
+  function openCrowdVote(/* pred */){ /* TODO: enable post-close voting UI */ }
+  function castCrowdVote(/* state, id, option */){ /* TODO: record one vote */ }
+  function tallyCrowdVote(/* state, id */){
+    // TODO: return the majority option once quorum is met, else null.
+    // Wiring would be: const ans = tallyCrowdVote(state,id);
+    //                  if(ans) state.resolutions[id]={answer:ans,at:Date.now(),method:"crowd"};
+    return null;
+  }
+  return { resolveByAdmin, openCrowdVote, castCrowdVote, tallyCrowdVote };
+})();
+
+/* ════════════════════════════════════════════════════════════════════════════
+   LAYER 3 · UI
+   The only layer that touches the DOM. Pattern: actions mutate state → commit()
+   (persist + recompute derived) → render(). FX holds animations.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ---- FX: confetti + celebration overlay + toast (no libraries) ------------- */
+const FX = (() => {
+  const canvas = document.getElementById("confetti");
+  const ctx = canvas.getContext("2d");
+  let particles = [], raf = null;
+  function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+  addEventListener("resize", resize); resize();
+
+  function confetti(amount=130){
+    const colors = ["#8b5cf6","#ec4899","#fbbf24","#34d399","#60a5fa","#fb7185"];
+    for(let i=0;i<amount;i++) particles.push({
+      x: canvas.width/2 + (Math.random()-.5)*120, y: canvas.height/2-40,
+      vx:(Math.random()-.5)*14, vy: Math.random()*-15-4, g:.35+Math.random()*.2,
+      size:6+Math.random()*7, color:colors[(Math.random()*colors.length)|0],
+      rot:Math.random()*Math.PI, vr:(Math.random()-.5)*.3, life:1 });
+    if(!raf) loop();
+  }
+  function loop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{ p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.life-=.008;
+      ctx.save(); ctx.globalAlpha=Math.max(0,p.life); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+      ctx.fillStyle=p.color; ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*.6); ctx.restore(); });
+    particles = particles.filter(p=>p.life>0 && p.y<canvas.height+40);
+    if(particles.length) raf=requestAnimationFrame(loop);
+    else { ctx.clearRect(0,0,canvas.width,canvas.height); raf=null; }
+  }
+
+  const overlay = document.getElementById("celebrate");
+  const card = document.getElementById("celebrateCard");
+  let queue=[], showing=false;
+  function celebrate(cfg){ queue.push(cfg); if(!showing) next(); }
+  function next(){
+    if(!queue.length){ showing=false; return; }
+    showing=true; const c=queue.shift();
+    card.innerHTML =
+      (c.kicker?`<div class="kicker">${c.kicker}</div>`:"") +
+      (c.emoji?`<div class="big-emoji">${c.emoji}</div>`:"") +
+      `<div class="headline">${c.headline}</div>` +
+      (c.detail?`<div class="detail">${c.detail}</div>`:"") +
+      (c.points?`<div class="points-pop">+${c.points} pts</div>`:"") +
+      (c.breakdown?`<div class="breakdown">${c.breakdown}</div>`:"") +
+      `<div class="tap-hint">tap anywhere to continue</div>`;
+    overlay.classList.add("show");
+    if(c.withConfetti!==false) confetti();
+    try{ navigator.vibrate && navigator.vibrate([0,40,30,60]); }catch(e){}
+  }
+  function dismiss(){ if(!showing) return; overlay.classList.remove("show");
+    setTimeout(()=>{ if(queue.length) next(); else showing=false; },280); }
+  overlay.addEventListener("click", dismiss);
+
+  const toastEl = document.getElementById("toast"); let tT=null;
+  function toast(msg){ toastEl.textContent=msg; toastEl.classList.add("show");
+    clearTimeout(tT); tT=setTimeout(()=>toastEl.classList.remove("show"),1700); }
+
+  return { confetti, celebrate, toast };
+})();
+
+const UI = (() => {
+  let state = Store.load();
+  let derived = Game.computeDerived(state);
+  let currentView = "feed";
+  let feedFilter = "all";
+  let picksTab = "pending";
+
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const catOf = id => DATA.CATEGORIES[id];
+  const pct = f => Math.round(f*100);
+
+  function closeLabel(pred){
+    if(Game.isResolved(state, pred.id)) return { text:"Resolved", soon:false };
+    const d = Game.daysUntilClose(pred);
+    if(d<0) return { text:"Closed", soon:false };
+    if(d===0) return { text:"Closes today", soon:true };
+    if(d===1) return { text:"Closes tomorrow", soon:true };
+    if(d<=7) return { text:`Closes in ${d} days`, soon:true };
+    return { text:"Closes "+new Date(Game.closeTime(pred)).toLocaleDateString(undefined,{month:"short",day:"numeric"}), soon:false };
+  }
+
+  /* commit = persist + recompute derived + repaint. Call after any state change. */
+  function commit(){
+    // keep equipped cosmetics valid (e.g. after a reset they may not be unlocked)
+    const unlocked = new Set(Game.unlockedRewards(derived));
+    Store.save(state);
+    derived = Game.computeDerived(state);
+    const nowUnlocked = new Set(Game.unlockedRewards(derived));
+    if(state.activeTheme!=="default"){
+      const t = DATA.REWARDS.find(r=>r.type==="theme" && r.value===state.activeTheme);
+      if(t && !nowUnlocked.has(t.id)){ state.activeTheme="default"; }
+    }
+    if(state.activeTitle){
+      const t = DATA.REWARDS.find(r=>r.type==="title" && r.value===state.activeTitle);
+      if(t && !nowUnlocked.has(t.id)){ state.activeTitle=null; }
+    }
+    Store.save(state);
+    applyTheme(state.activeTheme||"default");
+    paintHeader();
+    render();
+  }
+
+  function paintHeader(){
+    $("#hdrPoints").textContent = derived.points;
+    $("#hdrStreak").textContent = derived.streak;
+    $("#hdrStreakPill").classList.toggle("hot", derived.streak>=2);
+  }
+
+  /* ---- FEED ---- */
+  function renderFeed(){
+    const chips = $("#feedChips");
+    const cats = ["all", ...Object.keys(DATA.CATEGORIES)];
+    chips.innerHTML = cats.map(c=>{
+      const label = c==="all" ? "✦ All" : `${catOf(c).emoji} ${catOf(c).name}`;
+      return `<button class="chip ${feedFilter===c?"active":""}" data-cat="${c}">${label}</button>`;
+    }).join("");
+    chips.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",()=>{feedFilter=ch.dataset.cat;renderFeed();}));
+
+    let list = DATA.PREDICTIONS.slice();
+    if(feedFilter!=="all") list = list.filter(p=>p.category===feedFilter);
+    // open + closing-soonest first; resolved/closed sink to the bottom
+    list.sort((a,b)=>{
+      const ra=Game.isResolved(state,a.id)||Game.isClosed(a), rb=Game.isResolved(state,b.id)||Game.isClosed(b);
+      if(ra!==rb) return ra?1:-1;
+      return Game.closeTime(a)-Game.closeTime(b);
+    });
+    const feed = $("#feed");
+    feed.innerHTML = list.map((p,i)=>cardHTML(p,i)).join("") ||
+      `<div class="empty"><div class="big">🤷</div>No predictions in this category yet.</div>`;
+    wireCards(feed);
+  }
+
+  /* One prediction card with crowd-belief bars + confidence toggle. */
+  function cardHTML(pred, index){
+    const cat = catOf(pred.category);
+    const resolved = Game.isResolved(state, pred.id);
+    const closed = Game.isClosed(pred);
+    const pick = state.picks[pred.id];
+    const correctAns = resolved ? state.resolutions[pred.id].answer : null;
+    const cl = closeLabel(pred);
+    const ec = Game.effectiveCrowd(state, pred);
+    const leaderPct = Math.max(...ec.pct);
+    // index of the most-popular option (drives the crowd-line + bar coloring)
+    let topI=0; ec.pct.forEach((p,i)=>{ if(p>ec.pct[topI]) topI=i; });
+
+    const opts = pred.options.map((opt,i)=>{
+      let cls = "option";
+      const p = ec.pct[i];
+      if(resolved){
+        cls += " disabled";
+        if(opt===correctAns) cls += " correct";
+        else if(pick && pick.option===opt) cls += " wrong";
+        else cls += " dim";
+      } else {
+        if(pick && pick.option===opt) cls += " picked";
+        if(closed) cls += " disabled dim";
+      }
+      // poll-bar color: green for "Yes"/leading option, red for "No", neutral otherwise
+      const low = String(opt).trim().toLowerCase();
+      const fillClass = low==="yes" ? "fill-yes"
+                      : low==="no"  ? "fill-no"
+                      : (i===topI ? "fill-lead" : "fill-other");
+      return `<button class="${cls}" data-pred="${pred.id}" data-opt="${esc(opt)}">
+        <span class="crowd-fill ${fillClass}" style="width:${pct(p)}%"></span>
+        <span class="bullet"></span>
+        <span class="opt-label">${esc(opt)}</span>
+        <span class="opt-pct">${pct(p)}%</span>
+      </button>`;
+    }).join("");
+
+    // crowd summary line
+    const crowdLine = `<div class="crowd-line">🧠 Crowd leans <b>${esc(pred.options[topI])} · ${pct(ec.pct[topI])}%</b> <span style="opacity:.7">· ${ec.total} picks</span></div>`;
+
+    // confidence toggle (only while open & unresolved)
+    let confRow = "";
+    if(!resolved && !closed){
+      const on = pick && pick.confident;
+      confRow = `<div class="conf-row">
+        <button class="conf-toggle ${on?"on":""}" data-conf="${pred.id}">⚡ ${on?"Confidence staked":"Stake confidence"}</button>
+        <span class="conf-meta">${on?`±${pred.pointValue} pts`:`${derived.confidenceLeft} left this week`}</span>
+      </div>`;
+    }
+
+    // footer
+    let footer = "";
+    if(resolved && pick){
+      const r = derived.per[pred.id];
+      if(r && r.isCorrect){
+        let parts = [`+${r.base} base`];
+        if(r.beat) parts.push(`+${r.beat} beat-crowd`);
+        if(r.sBonus) parts.push(`+${r.sBonus} streak`);
+        if(r.cBonus) parts.push(`+${r.cBonus} confidence`);
+        footer = `<span class="result-chip correct">✓ Called it · +${r.net} pts</span><span style="color:var(--muted);font-size:11px">${parts.join(" · ")}</span>`;
+      } else {
+        footer = r && r.cLoss
+          ? `<span class="result-chip wrong">✕ Missed · staked −${r.cLoss} pts</span>`
+          : `<span class="result-chip wrong">✕ Missed this one</span>`;
+      }
+    } else if(resolved){
+      footer = `<span class="result-chip pending">Resolved · you didn't pick</span>`;
+    } else if(pick){
+      footer = `<span class="result-chip pending">🔒 Locked in · awaiting result</span>` + (pick.confident?`<span class="result-chip conf">⚡ staked</span>`:"");
+    } else if(closed){
+      footer = `<span class="result-chip pending">Closed · no pick</span>`;
+    }
+
+    return `<div class="card" data-card="${pred.id}" style="animation-delay:${Math.min(index*.035,.4)}s">
+      <div class="card-top">
+        <span class="cat-tag" style="color:${cat.color}">${cat.emoji} ${cat.name}</span>
+        <span class="points-tag">+${pred.pointValue}</span>
+        <span class="close-info ${cl.soon?"soon":""}">${cl.text}</span>
+      </div>
+      <div class="q-text">${esc(pred.question)}</div>
+      <div class="options">${opts}</div>
+      ${crowdLine}
+      ${confRow}
+      ${footer?`<div class="card-footer">${footer}</div>`:""}
+    </div>`;
+  }
+
+  function wireCards(container){
+    container.querySelectorAll(".option:not(.disabled)").forEach(btn=>
+      btn.addEventListener("click",()=>lockIn(btn.dataset.pred, btn.dataset.opt, btn)));
+    container.querySelectorAll("[data-conf]").forEach(btn=>
+      btn.addEventListener("click",()=>toggleConfidence(btn.dataset.conf)));
+  }
+
+  /* ---- core interaction: LOCK IN ---- */
+  function lockIn(predId, option, btnEl){
+    const pred = DATA.byId[predId];
+    if(!pred || Game.isResolved(state,predId) || Game.isClosed(pred)) return;
+    const existing = state.picks[predId];
+    const already = existing && existing.option===option;
+    state.picks[predId] = { option, confident: existing? existing.confident : false, at: existing? existing.at : Date.now() };
+
+    const cardEl = btnEl.closest(".card");
+    if(cardEl){ cardEl.classList.remove("locked-flash"); void cardEl.offsetWidth; cardEl.classList.add("locked-flash"); }
+    try{ navigator.vibrate && navigator.vibrate(18); }catch(e){}
+    FX.toast(already? "Pick updated 🔁" : "Locked in! 🔒");
+    commit();
+  }
+
+  /* ---- opt-in CONFIDENCE STAKE ---- */
+  function toggleConfidence(predId){
+    const pred = DATA.byId[predId];
+    const pick = state.picks[predId];
+    if(!pick){ FX.toast("Lock a pick first, then stake ⚡"); return; }
+    if(pick.confident){ pick.confident=false; FX.toast("Stake removed"); commit(); return; }
+    if(Game.confidenceLeft(state)<=0){ FX.toast(`No confidence stakes left this week (max ${Game.CONFIDENCE_PER_WEEK})`); return; }
+    pick.confident = true; pick.at = Date.now(); // anchor the stake to this week
+    FX.toast(`⚡ Confidence staked · ±${pred.pointValue} pts`);
+    commit();
+  }
+
+  /* ---- MY PREDICTIONS ---- */
+  function renderPicks(){
+    $("#streakBanner").innerHTML = `<div class="streak-banner">
+      <div class="flame" style="font-size:34px">🔥</div>
+      <div><div class="num">${derived.streak}</div><div class="lab">current streak</div></div>
+      <div class="best">🏅 best ${derived.peakStreak}<br>🎯 ${derived.accuracy}% accuracy</div>
+    </div>`;
+
+    document.querySelectorAll(".subtab").forEach(t=>t.classList.toggle("active", t.dataset.subtab===picksTab));
+    const ids = Object.keys(state.picks).filter(id=>DATA.byId[id] &&
+      (picksTab==="pending" ? !Game.isResolved(state,id) : Game.isResolved(state,id)));
+    ids.sort((a,b)=> picksTab==="pending"
+      ? Game.closeTime(DATA.byId[a])-Game.closeTime(DATA.byId[b])
+      : (state.resolutions[b].at||0)-(state.resolutions[a].at||0));
+
+    const list = $("#picksList");
+    if(!ids.length){
+      list.innerHTML = picksTab==="pending"
+        ? `<div class="empty"><div class="big">🎯</div>No pending picks yet.<br>Head to the Feed and make some calls!</div>`
+        : `<div class="empty"><div class="big">📭</div>Nothing resolved yet.<br>Your results will land here.</div>`;
+      return;
+    }
+    list.innerHTML = ids.map((id,i)=>cardHTML(DATA.byId[id],i)).join("");
+    wireCards(list);
+  }
+
+  /* ---- PROFILE ---- */
+  function renderProfile(){
+    const d = derived, rank = d.rank;
+    const progress = Math.round(Game.rankProgress(d.points)*100);
+    const nextTxt = d.nextRank ? `${d.nextRank.min-d.points} pts to ${d.nextRank.emoji} ${d.nextRank.name}` : "Max rank — you're a Legend 🛸";
+    const title = state.activeTitle || rank.title;
+    const uname = state.username || "Anonymous caller";
+    const unlocked = new Set(Game.unlockedRewards(d));
+
+    const allBadges = DATA.REWARDS.filter(r=>r.type==="badge");
+    const ownedBadges = allBadges.filter(b=>unlocked.has(b.id));
+    const badgeGrid = allBadges.map(b=>{
+      const owned = unlocked.has(b.id);
+      return `<div class="badge ${owned?"":"locked"}" title="${esc(b.name)}">${b.value}${owned?"":'<span class="lock">🔒</span>'}</div>`;
+    }).join("");
+
+    // username picker (PRESETS only — no free text → nothing to moderate).
+    // FUTURE: a moderated custom-username input would attach right here.
+    const unameItems = DATA.USERNAMES.map(n=>
+      `<button class="pick-item ${state.username===n?"active":""}" data-uname="${esc(n)}">${esc(n)}</button>`).join("");
+
+    const ownedTitles = DATA.REWARDS.filter(r=>r.type==="title" && unlocked.has(r.id));
+    const titleItems = [`<button class="pick-item ${!state.activeTitle?"active":""}" data-title="">⭐ ${esc(rank.title)}</button>`]
+      .concat(ownedTitles.map(t=>`<button class="pick-item ${state.activeTitle===t.value?"active":""}" data-title="${esc(t.value)}">${t.emoji} ${esc(t.value)}</button>`)).join("");
+
+    const ownedThemes = DATA.REWARDS.filter(r=>r.type==="theme" && unlocked.has(r.id));
+    const swatchOf = { sunset:"#fb923c", mint:"#34d399", midnight:"#60a5fa", bubblegum:"#f472b6", gold:"#fbbf24" };
+    const themeItems = [`<button class="pick-item ${state.activeTheme==="default"?"active":""}" data-theme="default"><span class="swatch" style="background:#8b5cf6"></span>Violet</button>`]
+      .concat(ownedThemes.map(t=>`<button class="pick-item ${state.activeTheme===t.value?"active":""}" data-theme="${t.value}"><span class="swatch" style="background:${swatchOf[t.value]}"></span>${esc(t.name)}</button>`)).join("");
+
+    $("#profileBody").innerHTML = `
+      <div class="profile-hero">
+        <div class="uname">@ ${esc(uname)}</div>
+        <div class="rank-emoji">${rank.emoji}</div>
+        <div class="rank-name">${rank.name}</div>
+        <div class="rank-title">${esc(title)}</div>
+        <div class="rank-bar"><span style="width:${progress}%"></span></div>
+        <div class="rank-next">${nextTxt}</div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="num gold">${d.points}</div><div class="cap">Total points</div></div>
+        <div class="stat-box"><div class="num accent">${d.accuracy}%</div><div class="cap">Accuracy (${d.correct}/${d.totalResolved})</div></div>
+        <div class="stat-box"><div class="num">🔥 ${d.streak}</div><div class="cap">Current streak</div></div>
+        <div class="stat-box"><div class="num good">🏅 ${d.peakStreak}</div><div class="cap">Best streak</div></div>
+        <div class="stat-box"><div class="num">${Object.keys(state.picks).length}</div><div class="cap">Calls made</div></div>
+        <div class="stat-box"><div class="num accent">⚔️ ${d.beatWins}</div><div class="cap">Beat-the-crowd wins</div></div>
+      </div>
+
+      <div class="section-h">🙂 Username (optional, local)</div>
+      <div class="pick-row" id="unameRow">${unameItems}</div>
+
+      <div class="section-h">🏷️ Title</div>
+      <div class="pick-row" id="titleRow">${titleItems}</div>
+
+      <div class="section-h">🎨 Theme</div>
+      <div class="pick-row" id="themeRow">${themeItems}</div>
+
+      <div class="section-h">🎖️ Badges (${ownedBadges.length}/${allBadges.length})</div>
+      <div class="badge-grid">${badgeGrid}</div>
+    `;
+
+    $("#unameRow").querySelectorAll("[data-uname]").forEach(b=>b.addEventListener("click",()=>{
+      state.username = (state.username===b.dataset.uname) ? null : b.dataset.uname; commit();
+    }));
+    $("#titleRow").querySelectorAll("[data-title]").forEach(b=>b.addEventListener("click",()=>{ state.activeTitle=b.dataset.title||null; commit(); }));
+    $("#themeRow").querySelectorAll("[data-theme]").forEach(b=>b.addEventListener("click",()=>{ state.activeTheme=b.dataset.theme; commit(); }));
+  }
+
+  /* ---- REWARDS (milestone unlocks; never purchased/spent) ---- */
+  function renderRewards(){
+    const d = derived;
+    const unlocked = new Set(Game.unlockedRewards(d));
+    const rows = DATA.REWARDS.map(r=>{
+      const owned = unlocked.has(r.id);
+      return `<div class="reward ${owned?"":"locked"}">
+        <div class="ic">${r.emoji}</div>
+        <div class="meta">
+          <div class="type-tag">${r.type}</div>
+          <div class="name">${esc(r.name)}</div>
+          <div class="desc">${esc(r.desc)}</div>
+        </div>
+        <div class="status ${owned?"unlocked":"locked"}">${owned?"Unlocked ✓":"🔒 "+Game.unlockProgressText(r,d)}</div>
+      </div>`;
+    }).join("");
+    $("#rewardsBody").innerHTML =
+      `<div class="lb-note">Rewards unlock automatically when you hit a milestone. They're cosmetic only — you never spend points and nothing is for sale.</div>` + rows;
+  }
+
+  /* ---- LEADERBOARD (local-only: your score is real; rivals are labeled demo data) ---- */
+  function renderBoard(){
+    const me = { name: state.username || "You", avatar:"😎", points: derived.points, isUser:true };
+    const rows = DATA.DEMO_LEADERBOARD.map(e=>Object.assign({isUser:false}, e)).concat([me])
+      .sort((a,b)=> b.points-a.points || (a.isUser?-1:1));
+    const html = rows.map((r,i)=>`
+      <div class="lb-row ${r.isUser?"you":""}">
+        <div class="lb-rank">${i+1}</div>
+        <div class="lb-av">${r.avatar}</div>
+        <div class="lb-name">${esc(r.name)}${r.isUser?'<span class="tag">YOU</span>':'<span class="tag">demo</span>'}</div>
+        <div class="lb-pts">${r.points}</div>
+      </div>`).join("");
+    $("#boardBody").innerHTML =
+      `<div class="lb-note">⚠️ These rivals are <b>illustrative demo players</b> with fixed scores. Sign in to compete on the live leaderboard.</div>` + html;
+  }
+
+  /* ---- theme + nav + master render ---- */
+  function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); }
+  function setView(view){
+    currentView = view;
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    $("#view-"+view).classList.add("active");
+    document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+    scrollTo({top:0});
+    render();
+  }
+  function render(){
+    if(currentView==="feed") renderFeed();
+    else if(currentView==="picks") renderPicks();
+    else if(currentView==="profile") renderProfile();
+    else if(currentView==="rewards") renderRewards();
+    else if(currentView==="board") renderBoard();
+  }
+
+  /* ---- RESOLUTION action (called by the dev panel) ----
+     Marks an outcome, recomputes, then celebrates new correct calls, rank-ups,
+     and reward unlocks. answer===null undoes a resolution.                      */
+  function resolvePrediction(predId, answer, method){
+    const pred = DATA.byId[predId];
+    if(!pred) return;
+    const beforeUnlocked = new Set(Game.unlockedRewards(derived));
+    const beforeRankIdx = Game.rankIndex(derived.rank.name);
+
+    Resolution.resolveByAdmin(state, predId, answer, method); // "admin" (dev panel) or "ai" (data-refresh layer)
+    derived = Game.computeDerived(state);             // recompute BEFORE celebrating
+
+    // celebrate a correct call (once)
+    if(answer!==null && state.picks[predId] && state.picks[predId].option===answer && !state.celebrated.includes(predId)){
+      state.celebrated.push(predId);
+      const r = derived.per[predId];
+      let parts = [`+${r.base} base`];
+      if(r.beat) parts.push(`+${r.beat} beat-crowd`);
+      if(r.sBonus) parts.push(`+${r.sBonus} streak`);
+      if(r.cBonus) parts.push(`+${r.cBonus} confidence`);
+      FX.celebrate({ kicker:"Prediction resolved", emoji:"🎯", headline:"YOU CALLED IT!", detail:pred.question, points:r.net, breakdown:parts.join(" · ") });
+      if(derived.streak>=3) FX.celebrate({ kicker:"On fire", emoji:"🔥", headline:`${derived.streak} in a row!`, detail:"Streak bonus stacking up.", withConfetti:false });
+    }
+    // rank-up celebration (only on increase)
+    const afterRankIdx = Game.rankIndex(derived.rank.name);
+    if(afterRankIdx>beforeRankIdx && Game.rankIndex(state.seenRank)<afterRankIdx){
+      state.seenRank = derived.rank.name;
+      FX.celebrate({ kicker:"Rank up!", emoji:derived.rank.emoji, headline:derived.rank.name, detail:derived.rank.title });
+    }
+    // new reward unlocks
+    Game.unlockedRewards(derived).filter(id=>!beforeUnlocked.has(id) && !state.seenUnlocks.includes(id)).forEach(id=>{
+      state.seenUnlocks.push(id);
+      const rw = DATA.REWARDS.find(r=>r.id===id);
+      FX.celebrate({ kicker:"Reward unlocked", emoji:rw.emoji, headline:rw.name,
+        detail: rw.type==="theme"?"New theme available!":rw.type==="title"?"New title available!":"New badge earned!" });
+    });
+
+    commit();
+  }
+
+  return {
+    init(){
+      applyTheme(state.activeTheme||"default");
+      paintHeader();
+      document.querySelectorAll("#nav button").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
+      document.querySelectorAll(".subtab").forEach(t=>t.addEventListener("click",()=>{picksTab=t.dataset.subtab;renderPicks();}));
+      setView("feed");
+    },
+    getState:()=>state, getDerived:()=>derived,
+    resolvePrediction,
+    rerender(){ render(); },   // used by the data-refresh layer after merging new predictions
+    resetAll(){ state=Store.reset(); derived=Game.computeDerived(state); applyTheme("default"); commit(); FX.toast("Progress reset"); },
+  };
+})();
+
+/* ---- DEV PANEL: hidden owner tool to resolve predictions (admin method). ----
+   Open: tap the footer text 5×, OR press Ctrl/Cmd + Shift + D, OR call
+   openDevPanel() in the console. Not part of the player-facing UI.            */
+const Dev = (() => {
+  const overlay = document.getElementById("devOverlay");
+  function open(){ renderList(); overlay.classList.add("show"); }
+  function close(){ overlay.classList.remove("show"); }
+
+  function renderList(){
+    const state = UI.getState();
+    const list = document.getElementById("devList");
+    list.innerHTML = DATA.PREDICTIONS.map(pred=>{
+      const res = state.resolutions[pred.id];
+      const pick = state.picks[pred.id];
+      const cat = DATA.CATEGORIES[pred.category];
+      const opts = pred.options.map(opt=>
+        `<button class="dev-opt ${res&&res.answer===opt?"is-correct":""}" data-pred="${pred.id}" data-opt="${opt.replace(/"/g,"&quot;")}">${opt}</button>`).join("");
+      const pendingBtn = `<button class="dev-opt pending-btn" data-pred="${pred.id}" data-opt="__pending__">Pending</button>`;
+      const note = res ? `<span class="resolved-note"> · ✓ resolved: ${res.answer} (${res.method})</span>`
+                       : pick ? `<span class="pick-note"> · your pick: ${pick.option}${pick.confident?" ⚡":""}</span>` : "";
+      return `<div class="dev-row"><div class="dq">${cat.emoji} ${pred.question}${note}</div><div class="dev-opts">${opts}${pendingBtn}</div></div>`;
+    }).join("");
+    list.querySelectorAll(".dev-opt").forEach(btn=>btn.addEventListener("click",()=>{
+      const opt = btn.dataset.opt;
+      UI.resolvePrediction(btn.dataset.pred, opt==="__pending__"?null:opt);
+      renderList();
+    }));
+  }
+
+  function winMyPicks(){
+    const state = UI.getState();
+    const pending = Object.keys(state.picks).filter(id=>DATA.byId[id] && !state.resolutions[id]);
+    if(!pending.length){ FX.toast("Make some picks first!"); return; }
+    pending.slice(0,12).forEach(id=>UI.resolvePrediction(id, state.picks[id].option)); // resolve as the user's pick
+    renderList();
+  }
+  function resolveRandom(){
+    const state = UI.getState();
+    const c = DATA.PREDICTIONS.filter(p=>!state.resolutions[p.id]);
+    for(let i=c.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [c[i],c[j]]=[c[j],c[i]]; }
+    c.slice(0,5).forEach(p=>UI.resolvePrediction(p.id, p.options[(Math.random()*p.options.length)|0]));
+    renderList();
+  }
+
+  function init(){
+    document.getElementById("devClose").addEventListener("click", close);
+    document.getElementById("devWinDemo").addEventListener("click", winMyPicks);
+    document.getElementById("devRandom").addEventListener("click", resolveRandom);
+    document.getElementById("devReset").addEventListener("click",()=>{
+      if(confirm("Reset ALL progress (picks, points, unlocks)? This can't be undone.")){ UI.resetAll(); close(); }
+    });
+    overlay.addEventListener("click", e=>{ if(e.target===overlay) close(); });
+    // trigger 1: tap footer 5×
+    let taps=0, t=null;
+    document.getElementById("devTrigger").addEventListener("click",()=>{
+      taps++; clearTimeout(t); t=setTimeout(()=>taps=0,800); if(taps>=5){ taps=0; open(); }
+    });
+    // trigger 2: Ctrl/Cmd + Shift + D
+    document.addEventListener("keydown", e=>{
+      if((e.ctrlKey||e.metaKey)&&e.shiftKey&&(e.key==="D"||e.key==="d")){ e.preventDefault(); overlay.classList.contains("show")?close():open(); }
+    });
+  }
+  return { init, open };
+})();
+
+/* ════════════════════════════════════════════════════════════════════════════
+   DATA-REFRESH LAYER (front-end side) · Sync
+   ----------------------------------------------------------------------------
+   Reads the shared daily predictions file over HTTPS (GET predictions.json,
+   same-origin — e.g. generated by the cron job and served by GitHub Pages). Facts:
+
+     • There is NO API key here and never should be. The Groq key lives ONLY in
+       the scheduled function's env. This file is shipped to the browser and is
+       fully public.
+     • This does NOT call Groq. It only reads a file the daily job already
+       produced, so every user reads the SAME data — zero per-user / per-pageload
+       model calls.
+     • The file's contents are treated as UNTRUSTED: every field is re-validated
+       and safety-filtered here (defense in depth, mirroring the server) before it
+       is merged. Nothing is ever injected as raw HTML — rendering still goes
+       through cardHTML()/esc(), which escapes all text.
+     • If the file is missing/unreachable (e.g. opened from file://), this fails
+       silently and the app runs exactly as before on its built-in dataset.
+   ════════════════════════════════════════════════════════════════════════════ */
+const Sync = (() => {
+  // Same-origin static file by default (GitHub Pages serves predictions.json).
+  // To read from a cross-origin function instead, set window.CALLED_IT_PREDICTIONS_URL.
+  const FEED_URL = (typeof window !== "undefined" && window.CALLED_IT_PREDICTIONS_URL) || "predictions.json";
+  const KNOWN_CATS = Object.keys(DATA.CATEGORIES);
+
+  /* ---- CLIENT-SIDE SAFETY FILTER (AI output is untrusted) ------------------
+     A compact mirror of the server filter. If anything is even slightly off,
+     the item is DISCARDED rather than shown. */
+  const UNSAFE = /(porn|sex|nude|nsfw|kill|murder|suicide|self[\s-]?harm|rape|nazi|terror|bomb|gun\b|drug|cocaine|slur|gore|gambl)/i;
+  const PRIVATE_SIGNALS = /(@[a-z0-9_]+|https?:\/\/|www\.|\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\b[\w.+-]+@[\w-]+\.[\w.-]+\b)/i;
+
+  function cleanText(s, min, max){
+    if(typeof s !== "string") return null;
+    const t = s.trim();
+    if(t.length < min || t.length > max) return null;
+    if(/[<>]/.test(t)) return null;              // no HTML/markup
+    if(/[\x00-\x1f\x7f]/.test(t)) return null;   // no control chars
+    if(UNSAFE.test(t)) return null;              // content safety
+    if(PRIVATE_SIGNALS.test(t)) return null;     // no contact info / private-individual targeting
+    return t;
+  }
+
+  // Validate + normalize ONE AI-generated prediction → app shape, or null.
+  function validateNewPrediction(raw){
+    if(!raw || typeof raw !== "object") return null;
+    const question = cleanText(raw.question, 12, 140);
+    if(!question) return null;
+    if(!Array.isArray(raw.options)) return null;
+    const options = [];
+    for(const o of raw.options){
+      const c = cleanText(o, 1, 48);
+      if(!c || options.includes(c)) return null;  // clean + unique
+      options.push(c);
+    }
+    if(options.length < 2 || options.length > 4) return null;
+    const category = KNOWN_CATS.includes(raw.category) ? raw.category : "general";
+    // pointValue: clamp to the app's sane range
+    let pv = Math.round(Number(raw.pointValue));
+    if(!Number.isFinite(pv)) pv = 25;
+    pv = Math.max(10, Math.min(60, pv));
+    // closeDate: must parse to a real future-ish date
+    const ts = Date.parse(raw.closeDate);
+    if(!Number.isFinite(ts)) return null;
+    const closeDate = new Date(ts).toISOString().slice(0,10);
+    // stable id provided by the backend; fall back to a derived one
+    const id = (typeof raw.id === "string" && /^[a-z0-9_-]{1,32}$/i.test(raw.id)) ? raw.id : ("ai-" + ts + "-" + options.length);
+    // seed a small balanced crowd so the belief bar works (parallel to options)
+    const crowd = options.map(() => 8 + Math.floor(Math.random()*6));
+    return { id, category, question, options, crowd, closeDate, pointValue: pv, resolution: "pending", source: "ai" };
+  }
+
+  // Apply AI resolutions through the EXISTING scoring engine. Only high-confidence,
+  // valid outcomes on closed predictions are applied; everything else stays pending.
+  function applyResolutions(list){
+    const state = UI.getState();
+    (Array.isArray(list) ? list : []).forEach(r => {
+      if(!r || typeof r !== "object") return;
+      const pred = DATA.byId[r.id];
+      if(!pred) return;
+      if(state.resolutions[r.id]) return;                 // never override an existing (manual/AI) outcome
+      // ---- MANUAL-REVIEW FALLBACK: anything not high-confidence + a real option
+      //      is intentionally left pending for the owner to resolve in the dev panel.
+      if(r.confidence !== "high") return;
+      if(typeof r.outcome !== "string" || !pred.options.includes(r.outcome)) return;
+      if(!Game.isClosed(pred)) return;
+      UI.resolvePrediction(r.id, r.outcome, "ai");        // routes through normal scoring + celebration
+    });
+  }
+
+  async function pull(){
+    if(typeof fetch !== "function") return;
+    try{
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 6000);
+      const res = await fetch(FEED_URL, { signal: ctrl.signal, headers: { "accept": "application/json" }, cache: "no-store" });
+      clearTimeout(timer);
+      if(!res.ok) return;
+      const data = await res.json();
+      if(!data || typeof data !== "object") return;
+      let added = 0;
+      (Array.isArray(data.predictions) ? data.predictions : []).slice(0, 50).forEach(raw => {
+        const p = validateNewPrediction(raw);
+        if(p && !DATA.byId[p.id]){ DATA.PREDICTIONS.push(p); DATA.byId[p.id] = p; added++; }
+      });
+      applyResolutions(data.resolutions);
+      if(added) UI.rerender();
+    }catch(e){
+      /* offline / no backend / bad payload → keep running on built-in data */
+    }
+  }
+  return { pull, validateNewPrediction };
+})();
+
+/* ════════════════════════════════════════════════════════════════════════════
+   13+ AGE GATE + privacy note.
+   Blocks first-time use until the user confirms they're 13+. The ONLY thing
+   stored is a yes/no flag in localStorage — no date of birth, no personal data.
+   ════════════════════════════════════════════════════════════════════════════ */
+const AgeGate = (() => {
+  const KEY = "callit.v1.ageok";
+  const $ = s => document.querySelector(s);
+  function openPrivacy(e){ if(e) e.preventDefault(); const o=$("#privacyOverlay"); if(o) o.classList.add("show"); }
+  function closePrivacy(){ const o=$("#privacyOverlay"); if(o) o.classList.remove("show"); }
+  function check(){
+    // Privacy/Terms modal is reachable from the gate and the footer.
+    const op=$("#openPrivacy"); if(op) op.addEventListener("click", openPrivacy);
+    const fp=$("#footerPrivacy"); if(fp) fp.addEventListener("click", openPrivacy);
+    const pc=$("#privacyClose"); if(pc) pc.addEventListener("click", closePrivacy);
+    const po=$("#privacyOverlay"); if(po) po.addEventListener("click", e=>{ if(e.target.id==="privacyOverlay") closePrivacy(); });
+
+    let ok=false; try{ ok = localStorage.getItem(KEY)==="1"; }catch(e){}
+    if(ok) return;
+    const ov=$("#ageOverlay"); if(!ov) return;
+    ov.classList.add("show");
+    const btn=$("#ageConfirm");
+    if(btn) btn.addEventListener("click", ()=>{ try{ localStorage.setItem(KEY,"1"); }catch(e){} ov.classList.remove("show"); });
+  }
+  return { check };
+})();
+
+
+/* ---- bootstrap ---- */
+(function App(){
+  AgeGate.check();   // 13+ gate (blocks first-time users until confirmed)
+  UI.init();
+  Dev.init();
+  window.openDevPanel = Dev.open; // console escape hatch for the owner (local-only; see note)
+  // Read the shared daily predictions (NOT a model call; no key involved).
+  // Non-blocking: the app renders immediately on built-in data, then merges.
+  Sync.pull();
+})();
+</script>
+</body>
+</html>

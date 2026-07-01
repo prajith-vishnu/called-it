@@ -1,0 +1,546 @@
+[
+  {
+    "id": "m1",
+    "category": "music",
+    "question": "Will a solo female artist hold the #1 spot on the global singles chart on Aug 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-08-31",
+    "pointValue": 20
+  },
+  {
+    "id": "m2",
+    "category": "music",
+    "question": "Will any K-pop group announce a 2027 world stadium tour before Oct 1, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-09-30",
+    "pointValue": 25
+  },
+  {
+    "id": "m3",
+    "category": "music",
+    "question": "Which artist releases a new full studio album first, by Dec 31, 2026?",
+    "options": [
+      "Rihanna",
+      "Adele",
+      "Frank Ocean",
+      "None of them"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 45
+  },
+  {
+    "id": "m4",
+    "category": "music",
+    "question": "Will any single track pass 200M Spotify streams in one week before Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 30
+  },
+  {
+    "id": "m5",
+    "category": "music",
+    "question": "Will a song that went viral on TikTok reach the global Top 10 by Sep 30, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-09-30",
+    "pointValue": 15
+  },
+  {
+    "id": "m6",
+    "category": "music",
+    "question": "Will a major artist surprise-drop an album (announced <48h ahead) before Nov 1, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-11-01",
+    "pointValue": 20
+  },
+  {
+    "id": "m7",
+    "category": "music",
+    "question": "Which genre has the most songs in the year-end global Top 100 for 2026?",
+    "options": [
+      "Pop",
+      "Hip-hop",
+      "Latin",
+      "K-pop"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 40
+  },
+  {
+    "id": "m8",
+    "category": "music",
+    "question": "Will an AI-voice or posthumous track chart in the global Top 40 by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 30
+  },
+  {
+    "id": "v1",
+    "category": "movies",
+    "question": "Will any film released in 2026 gross over $1B worldwide by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 15
+  },
+  {
+    "id": "v2",
+    "category": "movies",
+    "question": "Will a streaming-series finale top 100M views in its first week by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 25
+  },
+  {
+    "id": "v3",
+    "category": "movies",
+    "question": "Which studio has the biggest single domestic opening weekend in 2026?",
+    "options": [
+      "Disney / Marvel",
+      "Universal",
+      "Warner Bros",
+      "An indie / A24"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 40
+  },
+  {
+    "id": "v4",
+    "category": "movies",
+    "question": "Will a video-game adaptation series get a renewal announcement before Oct 1, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-10-01",
+    "pointValue": 20
+  },
+  {
+    "id": "v5",
+    "category": "movies",
+    "question": "Will an animated film top the domestic weekend box office at least once before Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 20
+  },
+  {
+    "id": "v6",
+    "category": "movies",
+    "question": "Will a major franchise officially announce a reboot before Nov 30, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-11-30",
+    "pointValue": 25
+  },
+  {
+    "id": "v7",
+    "category": "movies",
+    "question": "Will any 2026 sequel out-gross its predecessor's opening weekend?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 30
+  },
+  {
+    "id": "v8",
+    "category": "movies",
+    "question": "Will one film hold the #1 box-office spot for 3+ straight weekends in 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 30
+  },
+  {
+    "id": "v9",
+    "category": "movies",
+    "question": "Will a major streaming service raise its standard monthly price before Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 20
+  },
+  {
+    "id": "i1",
+    "category": "internet",
+    "question": "Will any creator pass 400M subscribers on a single platform by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 30
+  },
+  {
+    "id": "i2",
+    "category": "internet",
+    "question": "Will MrBeast upload a video that hits 100M views within 30 days, before Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 20
+  },
+  {
+    "id": "i3",
+    "category": "internet",
+    "question": "Which platform adds the most new monthly active users in 2026?",
+    "options": [
+      "TikTok",
+      "YouTube",
+      "Instagram",
+      "A brand-new app"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 40
+  },
+  {
+    "id": "i4",
+    "category": "internet",
+    "question": "Will a podcast episode become a platform's most-viewed video of any month by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 25
+  },
+  {
+    "id": "i5",
+    "category": "internet",
+    "question": "Will a livestream break 8M concurrent viewers by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 35
+  },
+  {
+    "id": "i6",
+    "category": "internet",
+    "question": "Will an AI virtual creator sign a major brand deal before Nov 30, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-11-30",
+    "pointValue": 25
+  },
+  {
+    "id": "i7",
+    "category": "internet",
+    "question": "Will a top creator announce a major career pivot (music, acting, office) by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 25
+  },
+  {
+    "id": "i8",
+    "category": "internet",
+    "question": "Which content format gets the biggest engagement boost in 2026?",
+    "options": [
+      "Long-form video",
+      "Short clips",
+      "Live shopping",
+      "Podcasts"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 40
+  },
+  {
+    "id": "a1",
+    "category": "awards",
+    "question": "Will a streaming-distributed film win Best Picture at the 2027 ceremony?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2027-03-15",
+    "pointValue": 25
+  },
+  {
+    "id": "a2",
+    "category": "awards",
+    "question": "Will a first-time nominee win the top Album-of-the-Year award at the next major music ceremony?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2027-02-15",
+    "pointValue": 30
+  },
+  {
+    "id": "a3",
+    "category": "awards",
+    "question": "Will the next major awards broadcast's viewership rise vs. the prior year?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2027-02-15",
+    "pointValue": 20
+  },
+  {
+    "id": "a4",
+    "category": "awards",
+    "question": "Which category produces the biggest upset at the next major music awards?",
+    "options": [
+      "Best New Artist",
+      "Record of the Year",
+      "Album of the Year",
+      "Song of the Year"
+    ],
+    "closeDate": "2027-02-15",
+    "pointValue": 45
+  },
+  {
+    "id": "a5",
+    "category": "awards",
+    "question": "Will any moment from the next major awards show trend #1 on a social platform within 24h?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2027-02-15",
+    "pointValue": 15
+  },
+  {
+    "id": "a6",
+    "category": "awards",
+    "question": "Will a sequel or franchise film win a top award at the next major film ceremony?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2027-03-15",
+    "pointValue": 25
+  },
+  {
+    "id": "t1",
+    "category": "trends",
+    "question": "Will a dance challenge tied to a specific song trend worldwide before Sep 30, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-09-30",
+    "pointValue": 15
+  },
+  {
+    "id": "t2",
+    "category": "trends",
+    "question": "Which aesthetic has the most new hashtag posts on TikTok by Dec 31, 2026?",
+    "options": [
+      "Y2K",
+      "Cottagecore",
+      "Clean girl",
+      "Something brand new"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 40
+  },
+  {
+    "id": "t3",
+    "category": "trends",
+    "question": "Will a single social post exceed 5M likes within 24 hours before Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 20
+  },
+  {
+    "id": "t4",
+    "category": "trends",
+    "question": "Will a food or drink item sell out nationally after going viral, before Nov 1, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-11-01",
+    "pointValue": 20
+  },
+  {
+    "id": "t5",
+    "category": "trends",
+    "question": "Which gadget gets the most viral buzz in 2026?",
+    "options": [
+      "Smart ring",
+      "AI glasses",
+      "Retro camera",
+      "Mini projector"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 40
+  },
+  {
+    "id": "t6",
+    "category": "trends",
+    "question": "Will a 2000s fashion trend re-enter the mainstream by Sep 30, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-09-30",
+    "pointValue": 20
+  },
+  {
+    "id": "t7",
+    "category": "trends",
+    "question": "Will a non-celebrity's video out-perform the year's top celebrity video by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 25
+  },
+  {
+    "id": "t8",
+    "category": "trends",
+    "question": "Will a new slang term be added to a major dictionary by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 20
+  },
+  {
+    "id": "g1",
+    "category": "general",
+    "question": "Will a private company launch humans to orbit by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 30
+  },
+  {
+    "id": "g2",
+    "category": "general",
+    "question": "Will a top phone brand announce a new foldable or rollable device before Nov 30, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-11-30",
+    "pointValue": 20
+  },
+  {
+    "id": "g3",
+    "category": "general",
+    "question": "Will an AI feature be the headline of a major tech keynote in 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 15
+  },
+  {
+    "id": "g4",
+    "category": "general",
+    "question": "Will two rival brands launch an official collab product before Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 20
+  },
+  {
+    "id": "g5",
+    "category": "general",
+    "question": "Will a major tour ticket presale crash a big ticketing site by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 15
+  },
+  {
+    "id": "g6",
+    "category": "general",
+    "question": "Will a sports underdog (lowest seed) win a major championship in 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 35
+  },
+  {
+    "id": "g7",
+    "category": "general",
+    "question": "Will a brand or movie mascot/character trend worldwide by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 25
+  },
+  {
+    "id": "g8",
+    "category": "general",
+    "question": "Will a new official emoji set be released by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 20
+  },
+  {
+    "id": "g9",
+    "category": "general",
+    "question": "Will a limited sneaker resell for 5x retail within a week of dropping, by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 25
+  }
+]

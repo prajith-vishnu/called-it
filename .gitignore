@@ -1,0 +1,16 @@
+# ── secrets: NEVER commit real keys ──────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# backend generated data (AI run output + rate-limit state; regenerated at runtime)
+server/data/cache.json
+server/data/cache.json.tmp
+server/data/ratelimit.json
+
+# deps / runtime
+node_modules/
+npm-debug.log*
+.DS_Store

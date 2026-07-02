@@ -78,8 +78,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* HEADER */
 .app-header{position:sticky;top:0;z-index:40;padding:calc(12px + env(safe-area-inset-top)) 18px 12px;display:flex;align-items:center;gap:8px;background:color-mix(in srgb,var(--bg-0) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--stroke);}
-.logo{font-weight:800;font-size:19px;letter-spacing:-.03em;color:var(--accent);user-select:none;}
-.logo .dot{color:var(--accent-2);}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:-.03em;color:var(--text);user-select:none;}
+.logo-mark{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;flex:0 0 auto;box-shadow:0 2px 6px color-mix(in srgb,var(--accent) 35%,transparent);}
+.logo-word{color:var(--text);}
 .header-spacer{flex:1;}
 .stat-pill{display:flex;align-items:center;gap:6px;background:var(--card-2);border:1px solid var(--stroke);padding:6px 11px;border-radius:999px;font-weight:700;font-size:13.5px;}
 .stat-pill .label{color:var(--muted);font-weight:600;font-size:12px;}
@@ -115,31 +116,29 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .q-text{font-size:16px;font-weight:700;line-height:1.35;margin:2px 0 13px;letter-spacing:-.01em;}
 
 /* OUTCOME OPTIONS — label left, crowd % right, subtle belief bar behind */
-.options{display:grid;gap:8px;}
-.option{position:relative;text-align:left;background:var(--card);border:1.5px solid var(--stroke);border-radius:10px;padding:12px 14px;font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:10px;overflow:hidden;transition:transform .1s,border-color .15s,background .15s;}
-.option:active{transform:scale(.985);}
-.crowd-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--crowd);transition:width .6s cubic-bezier(.2,.9,.2,1);z-index:0;}
-.crowd-fill.fill-yes,.crowd-fill.fill-lead{background:rgba(22,163,74,.13);}
-.crowd-fill.fill-no{background:rgba(229,72,77,.12);}
-.crowd-fill.fill-other{background:rgba(105,112,125,.10);}
-.option>*{position:relative;z-index:1;}
-.option .bullet{width:19px;height:19px;border-radius:50%;flex:0 0 auto;border:2px solid var(--stroke);display:grid;place-items:center;font-size:11px;transition:all .18s;}
-.option .opt-label{flex:1;min-width:0;}
-.option .opt-pct{font-size:14px;font-weight:800;color:var(--text);margin-left:auto;font-variant-numeric:tabular-nums;}
-.option.picked{border-color:var(--accent);background:var(--accent-soft);}
-.option.picked .bullet{border-color:var(--accent);background:var(--accent);color:#fff;}
-.option.picked .bullet::after{content:"✓";}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.option{position:relative;text-align:center;background:var(--card);border:1.5px solid var(--stroke);border-radius:11px;padding:11px 12px;min-height:56px;font-size:14.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .1s,border-color .15s,background .15s,color .15s;}
+.option:active{transform:scale(.97);}
+.option .opt-label{max-width:100%;line-height:1.2;}
+.option .opt-pct{font-size:12.5px;font-weight:800;opacity:.75;font-variant-numeric:tabular-nums;}
+.option.opt-yes{color:var(--good);border-color:rgba(22,163,74,.32);}
+.option.opt-no{color:var(--bad);border-color:rgba(229,72,77,.32);}
+.option.opt-lead,.option.opt-other{color:var(--text);}
+.option.picked{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+.option.picked.opt-yes{border-color:var(--good);background:rgba(22,163,74,.15);color:var(--good);}
+.option.picked.opt-no{border-color:var(--bad);background:rgba(229,72,77,.15);color:var(--bad);}
 .option.disabled{pointer-events:none;}
-.option.dim{opacity:.55;}
-.option.correct{border-color:var(--good);}
-.option.correct .bullet{border-color:var(--good);background:var(--good);color:#fff;}
-.option.correct .bullet::after{content:"✓";}
-.option.wrong{border-color:var(--bad);}
-.option.wrong .bullet{border-color:var(--bad);background:var(--bad);color:#fff;}
-.option.wrong .bullet::after{content:"✕";}
+.option.dim{opacity:.5;}
+.option.correct{border-color:var(--good);background:rgba(22,163,74,.14);color:var(--good);}
+.option.wrong{border-color:var(--bad);background:rgba(229,72,77,.12);color:var(--bad);}
 
-.crowd-line{font-size:12px;font-weight:600;color:var(--muted);margin-top:11px;display:flex;align-items:center;gap:6px;}
-.crowd-line b{color:var(--text);font-weight:700;}
+/* green/red probability bar */
+.probbar{display:flex;gap:2px;height:8px;border-radius:999px;overflow:hidden;background:var(--card-2);margin:0 0 12px;}
+.probbar .seg{height:100%;transition:width .6s cubic-bezier(.2,.9,.2,1);}
+.probbar .seg-yes,.probbar .seg-lead{background:var(--good);}
+.probbar .seg-no{background:var(--bad);}
+.probbar .seg-other{background:#c3c9d2;}
+.vol{font-size:11.5px;font-weight:600;color:var(--muted);margin-top:10px;text-align:center;}
 
 /* CONFIDENCE STAKE */
 .conf-row{margin-top:12px;display:flex;align-items:center;gap:10px;}
@@ -225,7 +224,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* BOTTOM NAV */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:50;max-width:520px;margin:0 auto;display:flex;padding:8px 4px calc(8px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--bg-0) 92%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--stroke);}
 .nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--muted);font-size:10.5px;font-weight:600;transition:color .2s,transform .15s;}
-.nav button .ni{font-size:19px;transition:transform .2s;}
+.nav button .ni{display:grid;place-items:center;height:22px;transition:transform .2s;}
+.nav button .ni svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .nav button.active{color:var(--accent);}
 .nav button.active .ni{transform:translateY(-1px) scale(1.08);}
 .nav button.active::after{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:1px;}
@@ -307,7 +307,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 <div id="app">
   <header class="app-header">
-    <div class="logo">CALLED&nbsp;IT<span class="dot">.</span></div>
+    <div class="logo">
+      <span class="logo-mark"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg></span>
+      <span class="logo-word">Called&nbsp;It</span>
+    </div>
     <div class="header-spacer"></div>
     <div class="stat-pill streak-pill" id="hdrStreakPill"><span class="flame">🔥</span><span id="hdrStreak">0</span></div>
     <div class="stat-pill"><span id="hdrPoints">0</span><span class="label">pts</span></div>
@@ -360,11 +363,11 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 </div>
 
 <nav class="nav" id="nav">
-  <button class="active" data-view="feed"><span class="ni">🏠</span>Feed</button>
-  <button data-view="picks"><span class="ni">🎟️</span>Picks</button>
-  <button data-view="board"><span class="ni">🏆</span>Ranks</button>
-  <button data-view="profile"><span class="ni">👤</span>Profile</button>
-  <button data-view="rewards"><span class="ni">✨</span>Rewards</button>
+  <button class="active" data-view="feed"><span class="ni"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span>Feed</button>
+  <button data-view="picks"><span class="ni"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>Picks</button>
+  <button data-view="board"><span class="ni"><svg viewBox="0 0 24 24"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="10"/></svg></span>Ranks</button>
+  <button data-view="profile"><span class="ni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>Profile</button>
+  <button data-view="rewards"><span class="ni"><svg viewBox="0 0 24 24"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>Rewards</button>
 </nav>
 
 <canvas id="confetti"></canvas>
@@ -915,7 +918,7 @@ const UI = (() => {
     const chips = $("#feedChips");
     const cats = ["all", ...Object.keys(DATA.CATEGORIES)];
     chips.innerHTML = cats.map(c=>{
-      const label = c==="all" ? "✦ All" : `${catOf(c).emoji} ${catOf(c).name}`;
+      const label = c==="all" ? "All" : catOf(c).name;
       return `<button class="chip ${feedFilter===c?"active":""}" data-cat="${c}">${label}</button>`;
     }).join("");
     chips.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",()=>{feedFilter=ch.dataset.cat;renderFeed();}));
@@ -947,8 +950,12 @@ const UI = (() => {
     // index of the most-popular option (drives the crowd-line + bar coloring)
     let topI=0; ec.pct.forEach((p,i)=>{ if(p>ec.pct[topI]) topI=i; });
 
+    // helper: green (yes / crowd leader), red (no), neutral (other multi-choice)
+    const kindOf = (opt,i) => { const low=String(opt).trim().toLowerCase();
+      return low==="yes"?"yes":low==="no"?"no":(i===topI?"lead":"other"); };
+
     const opts = pred.options.map((opt,i)=>{
-      let cls = "option";
+      let cls = "option opt-"+kindOf(opt,i);
       const p = ec.pct[i];
       if(resolved){
         cls += " disabled";
@@ -959,28 +966,24 @@ const UI = (() => {
         if(pick && pick.option===opt) cls += " picked";
         if(closed) cls += " disabled dim";
       }
-      // poll-bar color: green for "Yes"/leading option, red for "No", neutral otherwise
-      const low = String(opt).trim().toLowerCase();
-      const fillClass = low==="yes" ? "fill-yes"
-                      : low==="no"  ? "fill-no"
-                      : (i===topI ? "fill-lead" : "fill-other");
       return `<button class="${cls}" data-pred="${pred.id}" data-opt="${esc(opt)}">
-        <span class="crowd-fill ${fillClass}" style="width:${pct(p)}%"></span>
-        <span class="bullet"></span>
         <span class="opt-label">${esc(opt)}</span>
         <span class="opt-pct">${pct(p)}%</span>
       </button>`;
     }).join("");
 
-    // crowd summary line
-    const crowdLine = `<div class="crowd-line">🧠 Crowd leans <b>${esc(pred.options[topI])} · ${pct(ec.pct[topI])}%</b> <span style="opacity:.7">· ${ec.total} picks</span></div>`;
+    // green/red probability bar — one segment per option, sized by crowd %
+    const segs = pred.options.map((opt,i)=>
+      `<span class="seg seg-${kindOf(opt,i)}" style="width:${pct(ec.pct[i])}%"></span>`).join("");
+    const probBar = `<div class="probbar">${segs}</div>`;
+    const volLine = `<div class="vol">${ec.total} picks so far</div>`;
 
     // confidence toggle (only while open & unresolved)
     let confRow = "";
     if(!resolved && !closed){
       const on = pick && pick.confident;
       confRow = `<div class="conf-row">
-        <button class="conf-toggle ${on?"on":""}" data-conf="${pred.id}">⚡ ${on?"Confidence staked":"Stake confidence"}</button>
+        <button class="conf-toggle ${on?"on":""}" data-conf="${pred.id}">${on?"Confidence staked":"Stake confidence"}</button>
         <span class="conf-meta">${on?`±${pred.pointValue} pts`:`${derived.confidenceLeft} left this week`}</span>
       </div>`;
     }
@@ -994,29 +997,30 @@ const UI = (() => {
         if(r.beat) parts.push(`+${r.beat} beat-crowd`);
         if(r.sBonus) parts.push(`+${r.sBonus} streak`);
         if(r.cBonus) parts.push(`+${r.cBonus} confidence`);
-        footer = `<span class="result-chip correct">✓ Called it · +${r.net} pts</span><span style="color:var(--muted);font-size:11px">${parts.join(" · ")}</span>`;
+        footer = `<span class="result-chip correct">Called it · +${r.net} pts</span><span style="color:var(--muted);font-size:11px">${parts.join(" · ")}</span>`;
       } else {
         footer = r && r.cLoss
-          ? `<span class="result-chip wrong">✕ Missed · staked −${r.cLoss} pts</span>`
-          : `<span class="result-chip wrong">✕ Missed this one</span>`;
+          ? `<span class="result-chip wrong">Missed · staked −${r.cLoss} pts</span>`
+          : `<span class="result-chip wrong">Missed this one</span>`;
       }
     } else if(resolved){
       footer = `<span class="result-chip pending">Resolved · you didn't pick</span>`;
     } else if(pick){
-      footer = `<span class="result-chip pending">🔒 Locked in · awaiting result</span>` + (pick.confident?`<span class="result-chip conf">⚡ staked</span>`:"");
+      footer = `<span class="result-chip pending">Locked in · awaiting result</span>` + (pick.confident?`<span class="result-chip conf">staked</span>`:"");
     } else if(closed){
       footer = `<span class="result-chip pending">Closed · no pick</span>`;
     }
 
     return `<div class="card" data-card="${pred.id}" style="animation-delay:${Math.min(index*.035,.4)}s">
       <div class="card-top">
-        <span class="cat-tag" style="color:${cat.color}">${cat.emoji} ${cat.name}</span>
+        <span class="cat-tag" style="color:${cat.color}">${cat.name}</span>
         <span class="points-tag">+${pred.pointValue}</span>
         <span class="close-info ${cl.soon?"soon":""}">${cl.text}</span>
       </div>
       <div class="q-text">${esc(pred.question)}</div>
+      ${probBar}
       <div class="options">${opts}</div>
-      ${crowdLine}
+      ${volLine}
       ${confRow}
       ${footer?`<div class="card-footer">${footer}</div>`:""}
     </div>`;
@@ -1279,7 +1283,7 @@ const Dev = (() => {
       const pendingBtn = `<button class="dev-opt pending-btn" data-pred="${pred.id}" data-opt="__pending__">Pending</button>`;
       const note = res ? `<span class="resolved-note"> · ✓ resolved: ${res.answer} (${res.method})</span>`
                        : pick ? `<span class="pick-note"> · your pick: ${pick.option}${pick.confident?" ⚡":""}</span>` : "";
-      return `<div class="dev-row"><div class="dq">${cat.emoji} ${pred.question}${note}</div><div class="dev-opts">${opts}${pendingBtn}</div></div>`;
+      return `<div class="dev-row"><div class="dq">${pred.question}${note}</div><div class="dev-opts">${opts}${pendingBtn}</div></div>`;
     }).join("");
     list.querySelectorAll(".dev-opt").forEach(btn=>btn.addEventListener("click",()=>{
       const opt = btn.dataset.opt;

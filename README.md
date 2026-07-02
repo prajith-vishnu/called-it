@@ -1,16 +1,18 @@
 # Called It
 
+![Called It — feed and a beat-the-crowd celebration, real screenshots](docs/banner.png)
+
 **A free, no-money prediction game where you call what happens next and earn points for being right.**
 
 [![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-6f42c1)](https://prajith-vishnu.github.io/called-it/)
 [![CI](https://github.com/prajith-vishnu/called-it/actions/workflows/ci.yml/badge.svg)](https://github.com/prajith-vishnu/called-it/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## See it
+## See it (real screenshots, not mockups)
 
-| The feed | Locked in | Called it 🎉 |
+| The feed | Locked in | Beat the crowd 🔥 |
 |:---:|:---:|:---:|
-| ![Feed with crowd-belief bars](docs/feed.png) | ![A locked-in prediction](docs/locked-in.png) | ![Celebration overlay with confetti](docs/celebration.png) |
+| ![Feed with crowd-belief bars](docs/feed.png) | ![A locked-in prediction](docs/locked-in.png) | ![Contrarian-win celebration](docs/celebration.png) |
 
 <!-- Optional demo GIF — drop docs/demo.gif in and un-comment:
 ![Demo: tap an option → locked in → confetti → points update](docs/demo.gif)

@@ -55,28 +55,34 @@
    Light themes only swap the accent; "midnight" is a full dark variant.
 ============================================================================ */
 :root,[data-theme="default"]{
-  --grad:#f4f5f7; --bg-0:#ffffff; --card:#ffffff; --card-2:#f5f6f8; --stroke:#e6e8ec;
-  --text:#0e1524; --muted:#69707d;
+  --grad:#f6f5f0; --bg-0:#fdfcf8; --card:#fffefb; --card-2:#f1efe6; --stroke:#d8d3c4;
+  --text:#171512; --muted:#6b665c;
   --accent:#1652f0; --accent-2:#3f7bff; --accent-soft:rgba(22,82,240,.10);
-  --good:#16a34a; --bad:#e5484d; --gold:#c07000; --crowd:rgba(22,82,240,.07);
-  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.04);
+  --good:#16a34a; --bad:#e5484d; --gold:#a8710a; --crowd:rgba(22,82,240,.07);
+  --shadow:3px 3px 0 rgba(23,21,18,.12);
 }
 [data-theme="sunset"]{--accent:#f97316;--accent-2:#fb923c;--accent-soft:rgba(249,115,22,.10);--crowd:rgba(249,115,22,.07);}
 [data-theme="mint"]{--accent:#0d9488;--accent-2:#14b8a6;--accent-soft:rgba(13,148,136,.10);--crowd:rgba(13,148,136,.07);}
 [data-theme="bubblegum"]{--accent:#db2777;--accent-2:#ec4899;--accent-soft:rgba(219,39,119,.10);--crowd:rgba(219,39,119,.07);}
 [data-theme="gold"]{--accent:#b45309;--accent-2:#d97706;--accent-soft:rgba(180,83,9,.10);--crowd:rgba(180,83,9,.07);--gold:#b45309;}
 [data-theme="midnight"]{
-  --grad:#0b0f17; --bg-0:#0f141e; --card:#141b28; --card-2:#1b2431; --stroke:#26303f;
-  --text:#eef2f8; --muted:#93a0b3; --accent:#4f8cff; --accent-2:#6ea8ff; --accent-soft:rgba(79,140,255,.16);
+  --grad:#0c0d10; --bg-0:#121316; --card:#17181c; --card-2:#1e2024; --stroke:#34363b;
+  --text:#f0efe9; --muted:#96938a; --accent:#4f8cff; --accent-2:#6ea8ff; --accent-soft:rgba(79,140,255,.16);
   --good:#34d399; --bad:#fb7185; --gold:#fbbf24; --crowd:rgba(79,140,255,.14);
-  --shadow:0 1px 2px rgba(0,0,0,.4);
+  --shadow:3px 3px 0 rgba(0,0,0,.5);
 }
 
-/* ============================================================================ BASE ============================================================================ */
+/* ============================================================================ BASE
+   Type: a plain system sans for reading, a monospace for anything that's a
+   number or a status word (points, ranks, percentages) — a scoreboard/ticker
+   feel that fits a prediction game better than a rounded app-icon font ever
+   would. Surfaces use hard 2px borders + a flat offset shadow instead of soft
+   blur, because that's the look I actually wanted, not a template default.
+============================================================================ */
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;height:100%;}
 body{
-  font-family:"Inter","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   background:var(--grad); color:var(--text);
   -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
   font-size:15px; line-height:1.45; letter-spacing:-.006em;
@@ -86,14 +92,15 @@ body{
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
 ::selection{background:var(--accent);color:#fff;}
 #app{width:100%;max-width:520px;margin:0 auto;min-height:100%;position:relative;padding-bottom:calc(84px + env(safe-area-inset-bottom));}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 
 /* HEADER */
-.app-header{position:sticky;top:0;z-index:40;padding:calc(12px + env(safe-area-inset-top)) 18px 12px;display:flex;align-items:center;gap:8px;background:color-mix(in srgb,var(--bg-0) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--stroke);}
-.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:-.03em;color:var(--text);user-select:none;}
-.logo-mark{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;flex:0 0 auto;box-shadow:0 2px 6px color-mix(in srgb,var(--accent) 35%,transparent);}
+.app-header{position:sticky;top:0;z-index:40;padding:calc(12px + env(safe-area-inset-top)) 18px 12px;display:flex;align-items:center;gap:8px;background:var(--bg-0);border-bottom:2px solid var(--text);}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:-.03em;color:var(--text);user-select:none;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.logo-mark{width:26px;height:26px;border-radius:6px;background:var(--accent);border:2px solid var(--text);display:grid;place-items:center;flex:0 0 auto;}
 .logo-word{color:var(--text);}
 .header-spacer{flex:1;}
-.stat-pill{display:flex;align-items:center;gap:6px;background:var(--card-2);border:1px solid var(--stroke);padding:6px 11px;border-radius:999px;font-weight:700;font-size:13.5px;}
+.stat-pill{display:flex;align-items:center;gap:6px;background:var(--card-2);border:2px solid var(--stroke);padding:6px 11px;border-radius:7px;font-weight:700;font-size:13.5px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .stat-pill .label{color:var(--muted);font-weight:600;font-size:12px;}
 #hdrPoints{color:var(--gold);}
 .streak-pill .flame{display:inline-block;animation:flicker 1.4s ease-in-out infinite;}
@@ -104,7 +111,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .view{display:none;padding:14px 18px 24px;animation:fadeUp .3s ease;}
 .view.active{display:block;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
-.view-title{font-size:23px;font-weight:800;letter-spacing:-.03em;margin:4px 0 2px;}
+.view-title{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:4px 0 2px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .view-sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;}
 
 /* CATEGORY CHIPS — one row, never clipped: full-bleed horizontal scroller
@@ -118,17 +125,17 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .chips.fade-r{-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 48px),transparent);}
 .chips.fade-l{-webkit-mask-image:linear-gradient(90deg,transparent,#000 48px,#000 100%);mask-image:linear-gradient(90deg,transparent,#000 48px,#000 100%);}
 .chips.fade-lr{-webkit-mask-image:linear-gradient(90deg,transparent,#000 48px,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,transparent,#000 48px,#000 calc(100% - 48px),transparent);}
-.chip{flex:0 0 auto;padding:7px 14px;border-radius:999px;background:var(--card);border:1px solid var(--stroke);color:var(--muted);font-weight:600;font-size:13px;white-space:nowrap;transition:transform .12s,border-color .15s,color .15s,background .15s;}
-.chip.active{color:#fff;border-color:var(--accent);background:var(--accent);}
+.chip{flex:0 0 auto;padding:7px 14px;border-radius:7px;background:var(--card);border:2px solid var(--stroke);color:var(--muted);font-weight:700;font-size:13px;white-space:nowrap;transition:transform .12s,border-color .15s,color .15s,background .15s;}
+.chip.active{color:#fff;border-color:var(--text);background:var(--accent);}
 .chip:active{transform:scale(.95);}
 
 /* MARKET CARD */
-.card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;box-shadow:var(--shadow);animation:cardIn .35s ease backwards;}
+.card{background:var(--card);border:2px solid var(--stroke);border-radius:10px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;box-shadow:var(--shadow);animation:cardIn .35s ease backwards;}
 @keyframes cardIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
 .card.locked-flash{animation:lockFlash .6s ease;}
 @keyframes lockFlash{0%{box-shadow:0 0 0 0 var(--accent);}40%{box-shadow:0 0 0 3px var(--accent-soft),var(--shadow);}100%{box-shadow:var(--shadow);}}
 .card-top{display:flex;align-items:center;gap:8px;margin-bottom:11px;}
-.cat-tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:7px;background:var(--card-2);border:1px solid var(--stroke);}
+.cat-tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:6px;background:var(--card-2);border:1px solid var(--stroke);}
 .close-info{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--muted);text-align:right;}
 .close-info.soon{color:var(--accent);font-weight:700;}
 .close-info.urgent{color:var(--bad);font-weight:800;animation:urgentPulse 1.6s ease-in-out infinite;}
@@ -142,10 +149,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* OUTCOME OPTIONS — label left, crowd % right, subtle belief bar behind */
 .options{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.option{position:relative;text-align:center;background:var(--card);border:1.5px solid var(--stroke);border-radius:11px;padding:11px 12px;min-height:56px;font-size:14.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .1s,border-color .15s,background .15s,color .15s;}
+.option{position:relative;text-align:center;background:var(--card);border:2px solid var(--stroke);border-radius:8px;padding:11px 12px;min-height:56px;font-size:14.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .1s,border-color .15s,background .15s,color .15s;}
 .option:active{transform:scale(.97);}
 .option .opt-label{max-width:100%;line-height:1.2;}
-.option .opt-pct{font-size:12.5px;font-weight:800;opacity:.75;font-variant-numeric:tabular-nums;}
+.option .opt-pct{font-size:12.5px;font-weight:800;opacity:.75;font-variant-numeric:tabular-nums;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .option.opt-yes{color:var(--good);border-color:rgba(22,163,74,.32);}
 .option.opt-no{color:var(--bad);border-color:rgba(229,72,77,.32);}
 .option.opt-lead,.option.opt-other{color:var(--text);}
@@ -158,7 +165,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .option.wrong{border-color:var(--bad);background:rgba(229,72,77,.12);color:var(--bad);}
 
 /* green/red probability bar */
-.probbar{display:flex;gap:2px;height:8px;border-radius:999px;overflow:hidden;background:var(--card-2);margin:0 0 12px;}
+.probbar{display:flex;gap:2px;height:8px;border-radius:3px;overflow:hidden;background:var(--card-2);margin:0 0 12px;border:1px solid var(--stroke);}
 .probbar .seg{height:100%;transition:width .6s cubic-bezier(.2,.9,.2,1);}
 .probbar .seg-yes,.probbar .seg-lead{background:var(--good);}
 .probbar .seg-no{background:var(--bad);}
@@ -167,7 +174,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* CONFIDENCE STAKE */
 .conf-row{margin-top:12px;display:flex;align-items:center;gap:10px;}
-.conf-toggle{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:9px;background:var(--card-2);border:1.5px solid var(--stroke);font-weight:700;font-size:12px;color:var(--muted);transition:all .15s;}
+.conf-toggle{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:7px;background:var(--card-2);border:2px solid var(--stroke);font-weight:700;font-size:12px;color:var(--muted);transition:all .15s;}
 .conf-toggle.on{border-color:var(--gold);color:var(--gold);background:color-mix(in srgb,var(--gold) 12%,transparent);}
 .conf-toggle:active{transform:scale(.96);}
 .conf-meta{font-size:11.5px;color:var(--muted);font-weight:600;}
@@ -192,42 +199,42 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .subtab.active{color:var(--text);background:var(--card);box-shadow:var(--shadow);}
 
 /* STREAK BANNER */
-.streak-banner{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--stroke);box-shadow:var(--shadow);border-radius:14px;padding:16px 18px;margin-bottom:16px;color:var(--text);}
+.streak-banner{display:flex;align-items:center;gap:14px;background:var(--card);border:2px solid var(--stroke);box-shadow:var(--shadow);border-radius:10px;padding:16px 18px;margin-bottom:16px;color:var(--text);}
 .streak-banner .flame{font-size:30px;}
-.streak-banner .num{font-size:34px;font-weight:800;line-height:1;color:var(--accent);letter-spacing:-.03em;}
+.streak-banner .num{font-size:34px;font-weight:800;line-height:1;color:var(--accent);letter-spacing:-.02em;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .streak-banner .lab{font-size:12.5px;font-weight:600;color:var(--muted);margin-top:2px;}
 .streak-banner .best{margin-left:auto;text-align:right;font-size:12px;font-weight:700;color:var(--muted);line-height:1.7;}
 
 /* PROFILE */
-.profile-hero{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:18px;padding:22px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;box-shadow:var(--shadow);}
-.profile-hero .uname{font-size:12.5px;font-weight:700;opacity:.92;}
+.profile-hero{background:var(--accent);border:2px solid var(--text);border-radius:12px;padding:22px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;box-shadow:var(--shadow);}
+.profile-hero .uname{font-size:12.5px;font-weight:700;opacity:.92;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .profile-hero .rank-emoji{font-size:42px;line-height:1;margin-top:6px;}
 .profile-hero .rank-name{font-size:23px;font-weight:800;margin:8px 0 2px;letter-spacing:-.02em;}
 .profile-hero .rank-title{font-size:13.5px;opacity:.92;font-weight:600;}
-.rank-bar{height:8px;background:rgba(255,255,255,.28);border-radius:999px;margin-top:14px;overflow:hidden;}
-.rank-bar>span{display:block;height:100%;background:#fff;border-radius:999px;transition:width .8s cubic-bezier(.2,.9,.2,1);}
+.rank-bar{height:8px;background:rgba(255,255,255,.28);border-radius:3px;margin-top:14px;overflow:hidden;}
+.rank-bar>span{display:block;height:100%;background:#fff;border-radius:3px;transition:width .8s cubic-bezier(.2,.9,.2,1);}
 .rank-next{font-size:12px;font-weight:600;opacity:.92;margin-top:8px;}
 .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:6px;}
-.stat-box{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:15px;box-shadow:var(--shadow);}
-.stat-box .num{font-size:24px;font-weight:800;letter-spacing:-.03em;}
+.stat-box{background:var(--card);border:2px solid var(--stroke);border-radius:10px;padding:15px;box-shadow:var(--shadow);}
+.stat-box .num{font-size:24px;font-weight:800;letter-spacing:-.03em;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .stat-box .cap{font-size:12px;font-weight:600;color:var(--muted);margin-top:3px;}
 .stat-box .num.good{color:var(--good);}
 .stat-box .num.gold{color:var(--gold);}
 .stat-box .num.accent{color:var(--accent);}
 .section-h{font-size:15px;font-weight:800;margin:20px 0 10px;letter-spacing:-.01em;}
 .badge-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-.badge{aspect-ratio:1;border-radius:12px;background:var(--card);border:1px solid var(--stroke);display:grid;place-items:center;font-size:24px;position:relative;box-shadow:var(--shadow);}
+.badge{aspect-ratio:1;border-radius:9px;background:var(--card);border:2px solid var(--stroke);display:grid;place-items:center;font-size:24px;position:relative;box-shadow:var(--shadow);}
 .badge.locked{opacity:.4;filter:grayscale(.7);}
 .badge .lock{position:absolute;bottom:6px;right:7px;font-size:11px;}
 .pick-row{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;max-width:100%;scrollbar-width:none;}
 .pick-row::-webkit-scrollbar{display:none;}
-.pick-item{flex:0 0 auto;padding:9px 14px;border-radius:9px;background:var(--card);border:1.5px solid var(--stroke);font-weight:700;font-size:13px;white-space:nowrap;}
+.pick-item{flex:0 0 auto;padding:9px 14px;border-radius:7px;background:var(--card);border:2px solid var(--stroke);font-weight:700;font-size:13px;white-space:nowrap;}
 .pick-item.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
 .pick-item.locked{opacity:.4;}
 .swatch{width:13px;height:13px;border-radius:50%;display:inline-block;vertical-align:-1px;margin-right:6px;}
 
 /* REWARDS */
-.reward{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:13px 14px;margin-bottom:10px;box-shadow:var(--shadow);}
+.reward{display:flex;align-items:center;gap:13px;background:var(--card);border:2px solid var(--stroke);border-radius:9px;padding:13px 14px;margin-bottom:10px;box-shadow:var(--shadow);}
 .reward.locked{opacity:.62;}
 .reward .ic{width:46px;height:46px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;font-size:23px;background:var(--card-2);border:1px solid var(--stroke);}
 .reward .meta{flex:1;min-width:0;}
@@ -240,14 +247,14 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* LEADERBOARD */
 .lb-note{background:var(--card-2);border:1px solid var(--stroke);border-radius:11px;padding:12px 14px;color:var(--muted);font-size:12px;font-weight:600;margin-bottom:14px;line-height:1.5;}
-.lb-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:11px;padding:11px 14px;margin-bottom:8px;box-shadow:var(--shadow);}
+.lb-row{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid var(--stroke);border-radius:9px;padding:11px 14px;margin-bottom:8px;box-shadow:var(--shadow);}
 .lb-row.you{border-color:var(--accent);background:var(--accent-soft);}
 .lb-rank{width:24px;font-weight:800;font-size:14px;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums;}
 .lb-row.you .lb-rank{color:var(--accent);}
 .lb-av{font-size:24px;}
 .lb-name{font-weight:700;font-size:14.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .lb-name .tag{font-size:10px;color:var(--muted);font-weight:700;margin-left:6px;}
-.lb-pts{font-weight:800;color:var(--gold);font-size:14.5px;font-variant-numeric:tabular-nums;}
+.lb-pts{font-weight:800;color:var(--gold);font-size:14.5px;font-variant-numeric:tabular-nums;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .lb-sub{font-size:11px;color:var(--muted);font-weight:600;margin-top:1px;}
 .lb-hot{font-size:11px;font-weight:800;color:var(--accent);margin-left:6px;white-space:nowrap;}
 
@@ -257,7 +264,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .acct-pill:active{transform:scale(.95);}
 
 /* BOTTOM NAV */
-.nav{position:fixed;left:0;right:0;bottom:0;z-index:50;max-width:520px;margin:0 auto;display:flex;padding:8px 4px calc(8px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--bg-0) 92%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--stroke);}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:50;max-width:520px;margin:0 auto;display:flex;padding:8px 4px calc(8px + env(safe-area-inset-bottom));background:var(--bg-0);border-top:2px solid var(--text);}
 .nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--muted);font-size:10.5px;font-weight:600;transition:color .2s,transform .15s;}
 .nav button .ni{display:grid;place-items:center;height:22px;transition:transform .2s;}
 .nav button .ni svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
@@ -269,32 +276,32 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* OVERLAYS — celebration / toast */
 .celebrate{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:rgba(8,12,20,.55);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;padding:24px;}
 .celebrate.show{opacity:1;pointer-events:auto;}
-.celebrate-card{text-align:center;transform:scale(.7);transition:transform .45s cubic-bezier(.2,1.5,.4,1);max-width:340px;background:var(--card);border:1px solid var(--stroke);border-radius:20px;padding:28px 24px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.celebrate-card{text-align:center;transform:scale(.7);transition:transform .45s cubic-bezier(.2,1.5,.4,1);max-width:340px;background:var(--card);border:2px solid var(--text);border-radius:14px;padding:28px 24px;box-shadow:6px 6px 0 rgba(23,21,18,.2);}
 .celebrate.show .celebrate-card{transform:scale(1);}
 .celebrate .kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;}
-.celebrate .headline{font-size:32px;font-weight:800;line-height:1.05;margin:8px 0 12px;letter-spacing:-.03em;color:var(--accent);animation:pop .6s ease;}
+.celebrate .headline{font-size:32px;font-weight:800;line-height:1.05;margin:8px 0 12px;letter-spacing:-.02em;color:var(--accent);animation:pop .6s ease;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 @keyframes pop{0%{transform:scale(.5);}60%{transform:scale(1.1);}100%{transform:scale(1);}}
 .celebrate .big-emoji{font-size:58px;animation:spinPop .7s ease;}
 @keyframes spinPop{0%{transform:rotate(-25deg) scale(0);}70%{transform:rotate(8deg) scale(1.15);}100%{transform:none;}}
 .celebrate .detail{color:var(--text);font-size:14.5px;font-weight:600;margin-top:6px;}
-.celebrate .points-pop{font-size:22px;font-weight:800;color:var(--gold);margin-top:10px;}
+.celebrate .points-pop{font-size:22px;font-weight:800;color:var(--gold);margin-top:10px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .celebrate .breakdown{font-size:12px;color:var(--muted);font-weight:600;margin-top:6px;line-height:1.6;}
 .celebrate .tap-hint{color:var(--muted);font-size:12px;margin-top:22px;font-weight:500;}
 /* contrarian win — the core thrill gets extra gold flair */
-.celebrate-card.contrarian{border-color:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 40%,transparent),0 20px 60px rgba(0,0,0,.3);}
+.celebrate-card.contrarian{border-color:var(--gold);box-shadow:6px 6px 0 var(--gold);}
 .celebrate-card.contrarian .headline{color:var(--gold);}
 .celebrate-card.contrarian .kicker{color:var(--gold);}
 /* gentle miss reveal — calm, no fireworks */
 .celebrate-card.miss .headline{color:var(--text);font-size:26px;}
 
 /* PROFILE STORY */
-.story-card{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:14px;box-shadow:var(--shadow);margin-bottom:10px;}
+.story-card{display:flex;align-items:center;gap:13px;background:var(--card);border:2px solid var(--stroke);border-radius:9px;padding:14px;box-shadow:var(--shadow);margin-bottom:10px;}
 .story-card .ic{width:44px;height:44px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;font-size:22px;background:var(--card-2);border:1px solid var(--stroke);}
 .story-card .k{font-size:10.5px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;}
 .story-card .v{font-weight:700;font-size:14.5px;margin-top:1px;}
 .story-card .s{color:var(--muted);font-size:12px;font-weight:500;margin-top:2px;line-height:1.45;}
 .story-card.persona{border-color:color-mix(in srgb,var(--gold) 45%,var(--stroke));background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 7%,transparent),transparent 60%),var(--card);}
-.share-stats-btn{width:100%;margin-top:2px;padding:12px;border-radius:11px;font-weight:800;font-size:14px;background:var(--accent);color:#fff;transition:transform .12s;}
+.share-stats-btn{width:100%;margin-top:2px;padding:12px;border-radius:8px;font-weight:800;font-size:14px;background:var(--accent);color:#fff;border:2px solid var(--text);transition:transform .12s;}
 .share-stats-btn:active{transform:scale(.98);}
 #confetti{position:fixed;inset:0;z-index:80;pointer-events:none;}
 .toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);z-index:70;background:var(--text);color:var(--bg-0);font-weight:700;font-size:13.5px;padding:11px 18px;border-radius:999px;opacity:0;transition:all .3s;box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none;max-width:88%;text-align:center;}
@@ -303,7 +310,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* DEV PANEL (hidden owner tool) */
 .dev-overlay{position:fixed;inset:0;z-index:100;display:none;background:rgba(8,12,20,.6);backdrop-filter:blur(4px);}
 .dev-overlay.show{display:block;}
-.dev-panel{position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:var(--card);border-top-left-radius:20px;border-top-right-radius:20px;border-top:1px solid var(--stroke);max-height:88vh;display:flex;flex-direction:column;animation:sheetUp .35s cubic-bezier(.2,.9,.2,1);}
+.dev-panel{position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:var(--card);border-top-left-radius:14px;border-top-right-radius:14px;border-top:2px solid var(--text);max-height:88vh;display:flex;flex-direction:column;animation:sheetUp .35s cubic-bezier(.2,.9,.2,1);}
 @keyframes sheetUp{from{transform:translateY(100%);}to{transform:none;}}
 .dev-head{padding:16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--stroke);}
 .dev-head h3{margin:0;font-size:16px;font-weight:800;}
@@ -329,24 +336,24 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .acct-btn{font-size:16px;line-height:1;padding:7px 11px;}
 .auth-overlay{position:fixed;inset:0;z-index:110;display:none;place-items:center;background:rgba(8,12,20,.55);backdrop-filter:blur(4px);padding:20px;}
 .auth-overlay.show{display:grid;}
-.auth-card{position:relative;width:100%;max-width:380px;background:var(--card);border:1px solid var(--stroke);border-radius:20px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:cardIn .3s ease;}
+.auth-card{position:relative;width:100%;max-width:380px;background:var(--card);border:2px solid var(--text);border-radius:14px;padding:24px;box-shadow:6px 6px 0 rgba(23,21,18,.2);animation:cardIn .3s ease;}
 .auth-x{position:absolute;top:12px;right:12px;font-size:20px;color:var(--muted);width:34px;height:34px;border-radius:9px;}
-.auth-logo{font-weight:800;font-size:22px;letter-spacing:-.03em;text-align:center;margin-bottom:14px;color:var(--accent);}
+.auth-logo{font-weight:800;font-size:22px;letter-spacing:-.02em;text-align:center;margin-bottom:14px;color:var(--accent);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .auth-tabs{display:flex;gap:8px;margin-bottom:12px;}
-.auth-tab{flex:1;padding:10px;border-radius:10px;background:var(--card-2);border:1px solid var(--stroke);font-weight:700;color:var(--muted);font-size:14px;}
+.auth-tab{flex:1;padding:10px;border-radius:8px;background:var(--card-2);border:2px solid var(--stroke);font-weight:700;color:var(--muted);font-size:14px;}
 .auth-tab.active{color:var(--accent);background:var(--accent-soft);border-color:var(--accent);}
 .auth-sub{color:var(--muted);font-size:13px;font-weight:500;margin:0 0 14px;text-align:center;line-height:1.5;}
 .auth-label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:10px 2px 5px;}
-.auth-input{width:100%;background:var(--card-2);border:1.5px solid var(--stroke);border-radius:10px;padding:12px 14px;color:var(--text);font-size:15px;font-weight:500;}
+.auth-input{width:100%;background:var(--card-2);border:2px solid var(--stroke);border-radius:8px;padding:12px 14px;color:var(--text);font-size:15px;font-weight:500;}
 .auth-input:focus{outline:none;border-color:var(--accent);}
 .auth-check{display:flex;align-items:center;gap:9px;margin:13px 2px 4px;font-size:13px;font-weight:600;color:var(--text);}
 .auth-check input{width:18px;height:18px;accent-color:var(--accent);}
 .auth-msg{min-height:18px;font-size:12.5px;font-weight:600;color:var(--bad);margin:10px 2px 0;}
 .auth-msg.ok{color:var(--good);}
-.auth-submit{width:100%;margin-top:14px;padding:13px;border-radius:11px;font-weight:800;font-size:15px;background:var(--accent);color:#fff;transition:transform .12s,opacity .2s;}
+.auth-submit{width:100%;margin-top:14px;padding:13px;border-radius:8px;font-weight:800;font-size:15px;background:var(--accent);color:#fff;border:2px solid var(--text);transition:transform .12s,opacity .2s;}
 .auth-submit:active{transform:scale(.98);}
 .auth-submit:disabled{opacity:.5;}
-.auth-danger{width:100%;margin-top:10px;padding:11px;border-radius:11px;font-weight:700;font-size:13px;color:var(--bad);background:transparent;border:1px solid var(--bad);}
+.auth-danger{width:100%;margin-top:10px;padding:11px;border-radius:8px;font-weight:700;font-size:13px;color:var(--bad);background:transparent;border:2px solid var(--bad);}
 .auth-fine{font-size:11.5px;color:var(--muted);font-weight:500;line-height:1.5;margin:14px 2px 0;text-align:center;}
 .auth-fine a{color:var(--accent);}
 .privacy-body{font-size:13px;line-height:1.55;color:var(--muted);max-height:60vh;overflow-y:auto;}
@@ -472,6 +479,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
       <p class="auth-sub" id="acctInfo"></p>
       <button class="auth-danger" id="acctLogout" type="button">Sign out</button>
       <p class="auth-fine">Signing out returns you to this device's guest progress.</p>
+    </div>
+    <div id="authNoBackend" style="display:none">
+      <p class="auth-sub">This demo is running as a static site, with no server behind it — so accounts and the live leaderboard aren't available here.</p>
+      <p class="auth-fine">You're already playing as a guest: picks, points, and streaks are saved on this device. To try accounts, run the <code>server/</code> folder from the repo and open the app from there instead.</p>
     </div>
   </div>
 </div>
@@ -1882,6 +1893,7 @@ const Net = (() => {
 
 const Account = (() => {
   let user = null;                       // {username} while signed in
+  let backendUp = null;                  // null = unknown yet, then true/false
   const online = () => !!user;
   const $ = s => document.querySelector(s);
   let authTab = "login";
@@ -1970,6 +1982,16 @@ const Account = (() => {
   }
   function openModal(){
     const signedIn = online();
+    // No backend behind this page (e.g. the static GitHub Pages demo) → don't
+    // show a login form that can only 404/405. Say so plainly instead.
+    if(!signedIn && backendUp === false){
+      $("#authForms").style.display = "none";
+      $("#authAccount").style.display = "none";
+      $("#authNoBackend").style.display = "";
+      $("#authOverlay").classList.add("show");
+      return;
+    }
+    $("#authNoBackend").style.display = "none";
     $("#authForms").style.display = signedIn ? "none" : "";
     $("#authAccount").style.display = signedIn ? "" : "none";
     if(signedIn){
@@ -1999,7 +2021,11 @@ const Account = (() => {
       await enterOnline(ms);
       FX.toast(authTab==="login" ? `Welcome back, @${ms.user.username}! 👋` : `Account created — welcome, @${ms.user.username}! 🎉`);
     }catch(e){
-      msg.textContent = e.name==="AbortError" ? "Server unreachable — try again in a moment." : (e.message || "Something went wrong.");
+      // Defense in depth: same friendly message as openModal's guard, in case
+      // this fired before the boot-time backend check settled.
+      msg.textContent = (e.status===404 || e.status===405)
+        ? "Accounts aren't available on this demo (it's running without a backend) — you're all set as a guest."
+        : e.name==="AbortError" ? "Server unreachable — try again in a moment." : (e.message || "Something went wrong.");
     }finally{ btn.disabled = false; }
   }
 
@@ -2010,12 +2036,24 @@ const Account = (() => {
     exitOnline();
   }
 
-  /* Resume an existing session on load. Returns true if signed in. */
+  /* Resume an existing session on load. Returns true if signed in.
+     Also figures out whether there's a real backend to sign in to at all —
+     this repo ships as a static site on GitHub Pages by default, which has
+     no server behind it, so /api/* requests there 404/405 (a plain static
+     host can't run POST routes). Without this check, tapping "Sign in" on
+     the static demo would open a form that can only ever fail with a raw
+     HTTP error — that's the exact bug this fixes. */
   async function tryResume(){
     try{
       const ms = await Net.api("/api/auth/me");
+      backendUp = true;
       if(ms && ms.user){ await enterOnline(ms); return true; }
-    }catch(e){ /* offline or static hosting → guest mode */ }
+    }catch(e){
+      // A real backend answers with proper JSON (401 = "no session, but I'm
+      // here"). A static host with no backend answers 404/HTML, or the
+      // request never completes at all — either way, no accounts here.
+      backendUp = e.status === 401;
+    }
     return false;
   }
 

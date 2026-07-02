@@ -123,8 +123,10 @@ async function call(model, userText, jsonMode, estTokens) {
 async function generate(n) {
   const today = new Date().toISOString().slice(0, 10);
   const userText =
-    `Today is ${today}. Generate ${n} new predictions. ` +
-    `Each closeDate MUST be 3-9 months AFTER ${today} (ISO yyyy-mm-dd) — never in the past. ` +
+    `Today is ${today}. Generate ${n} new predictions about MAJOR, widely-followed events that lots of people care about right now — ` +
+    `e.g. the FIFA World Cup and big sports finals, blockbuster movie releases, chart-topping music, huge award shows, ` +
+    `major tech launches, and viral global moments. Prefer mainstream, popular topics over niche ones. ` +
+    `Each closeDate MUST be between 2 weeks and 9 months AFTER ${today} (ISO yyyy-mm-dd) — never in the past — so imminent big events are allowed. ` +
     `Respond as {"new_predictions":[...]}.`;
   const r = await call(GEN_MODEL, userText, true, 2000);
   if (r.skipped) return { skipped: true, reason: r.reason, new_predictions: [] };

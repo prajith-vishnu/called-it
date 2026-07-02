@@ -1,0 +1,43 @@
+# ============================================================================
+# CI — runs the zero-dependency test suite (node:test) + syntax gates on every
+# push/PR. No secrets are used or needed here.
+# ============================================================================
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run tests (scoring engine + security units)
+        run: node --test tests/scoring.test.js tests/server.test.js
+
+      - name: Syntax-check every server module
+        run: |
+          for f in server/lib/*.js server/server.js server/scripts/*.js sw.js; do
+            node --check "$f"
+          done
+
+      - name: Compile-check the front-end's inline JavaScript
+        run: |
+          node -e '
+            const fs = require("fs");
+            const html = fs.readFileSync("index.html", "utf8");
+            const start = html.indexOf("<script>\n\"use strict\";");
+            if (start < 0) throw new Error("app script block not found");
+            const js = html.slice(start + 9, html.indexOf("</script>", start));
+            new Function(js);
+            console.log("client JS compiles OK (" + js.length + " chars)");
+          '

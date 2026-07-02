@@ -3,6 +3,18 @@
 **A free, no-money prediction game where you call what happens next and earn points for being right.**
 
 [![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-6f42c1)](https://prajith-vishnu.github.io/called-it/)
+[![CI](https://github.com/prajith-vishnu/called-it/actions/workflows/ci.yml/badge.svg)](https://github.com/prajith-vishnu/called-it/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+## See it
+
+| The feed | Locked in | Called it 🎉 |
+|:---:|:---:|:---:|
+| ![Feed with crowd-belief bars](docs/feed.png) | ![A locked-in prediction](docs/locked-in.png) | ![Celebration overlay with confetti](docs/celebration.png) |
+
+<!-- Optional demo GIF — drop docs/demo.gif in and un-comment:
+![Demo: tap an option → locked in → confetti → points update](docs/demo.gif)
+-->
 
 ## What it is
 
@@ -32,6 +44,9 @@ This project was built for **Stardance** (Hack Club's NASA-themed challenge). It
 - 📊 **Real crowd-belief bars** — signed-in feeds show live tallies aggregated from everyone's actual picks
 - 🤖 **AI-refreshed questions several times a day**, safety-filtered, always served from cache — the AI being down never takes the game down
 - 🎉 **Confetti-grade celebrations** for wins, rank-ups, unlocks, and daily streaks
+- 📣 **Share your call** — one tap shares *"I called it: [pick] — only X% of the crowd agrees 👀"* (Web Share API with clipboard fallback; never includes anything personal)
+- 📲 **Installable PWA** — add it to your phone's home screen; the service worker keeps it fully playable offline from cache
+- ✅ **Tested + CI** — a zero-dependency `node:test` suite runs the *exact* scoring engine shipped in `index.html` (extracted and executed in a VM) on every push
 
 ## How it works
 
@@ -108,6 +123,10 @@ pm2/systemd so crashes self-heal. Full backend docs: [server/README.md](server/R
 ## Live demo
 
 ▶️ **<https://prajith-vishnu.github.io/called-it/>** *(enable GitHub Pages to activate — see repo Settings → Pages)*
+
+## License
+
+[MIT](LICENSE) © 2026 Prajith Vishnu
 
 ---
 

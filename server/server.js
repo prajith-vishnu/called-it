@@ -75,6 +75,12 @@ const STATIC_FILES = {
   "/": "index.html",
   "/index.html": "index.html",
   "/predictions.json": "predictions.json",
+  // PWA shell
+  "/manifest.webmanifest": "manifest.webmanifest",
+  "/sw.js": "sw.js",
+  "/icons/icon-192.png": "icons/icon-192.png",
+  "/icons/icon-512.png": "icons/icon-512.png",
+  "/icons/apple-touch-icon.png": "icons/apple-touch-icon.png",
 };
 const MIME = {
   ".html": "text/html; charset=utf-8",

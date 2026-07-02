@@ -43,8 +43,10 @@ This project was built for **Stardance** (Hack Club's NASA-themed challenge). It
 - ✨ **Ranks, themes, titles, and badges** unlocked purely by milestones — never bought, never for sale
 - 📊 **Real crowd-belief bars** — signed-in feeds show live tallies aggregated from everyone's actual picks
 - 🤖 **AI-refreshed questions several times a day**, safety-filtered, always served from cache — the AI being down never takes the game down
-- 🎉 **Confetti-grade celebrations** for wins, rank-ups, unlocks, and daily streaks
-- 📣 **Share your call** — one tap shares *"I called it: [pick] — only X% of the crowd agrees 👀"* (Web Share API with clipboard fallback; never includes anything personal)
+- 🎉 **"You vs. the crowd" reveals** — every resolve tells the story: *"Only 21% said Yes — you saw it coming"* gets gold-flair celebrations; misses get a gentle *"Not this time"*
+- 📖 **Your prediction story** — profile shows your best category and, after 10 resolved calls, a locally-computed **prediction personality** (The Contrarian, Streak Hunter, Space Cadet…) — nothing leaves the device
+- 📣 **Visual share cards** — one tap draws a branded image card of your call (or your stats) on a canvas and shares it via the system share sheet, clipboard, or download; space calls get a starfield 🌌; never anything personal on the card
+- 🗓️ **Calling streaks & urgency** — a separate "made a call today" streak rewards showing up, and predictions closing within 24h pulse *⏳ Closes in Nh* at the top of the feed
 - 📲 **Installable PWA** — add it to your phone's home screen; the service worker keeps it fully playable offline from cache
 - ✅ **Tested + CI** — a zero-dependency `node:test` suite runs the *exact* scoring engine shipped in `index.html` (extracted and executed in a VM) on every push
 
@@ -123,6 +125,10 @@ pm2/systemd so crashes self-heal. Full backend docs: [server/README.md](server/R
 ## Live demo
 
 ▶️ **<https://prajith-vishnu.github.io/called-it/>** — live now, refreshed with new AI predictions on schedule (installable as an app from your phone's browser)
+
+## Credits
+
+Designed and built by **Prajith Vishnu**. [Claude](https://claude.com) (Anthropic's AI) was used as a coding assistant to help write this website's code; the concept, game design, product direction, and every final decision are my own.
 
 ## License
 

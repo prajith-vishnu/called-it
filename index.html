@@ -25,19 +25,24 @@
      streaks, ranks, badges, leaderboard position. Nothing is purchasable,
      nothing is redeemable, nothing has real-world value.
 
-     Single self-contained file. No backend, no APIs, no network, no accounts,
-     no personal data. All state persists in localStorage on this device only.
+     Single self-contained file, no framework, no build step. Two modes:
+       • GUEST (default): fully playable offline — no accounts, no personal
+         data, everything in this device's localStorage.
+       • SIGNED IN (optional): username + password only (no email). Picks are
+         validated + scored on the server for the live leaderboard; the
+         session rides in an httpOnly cookie this script can never read.
 
      -------------------------------------------------------------------------
-     ARCHITECTURE — three clearly separated layers (see the <script> below):
+     ARCHITECTURE — separated layers (see the <script> below):
 
        LAYER 1 · DATA   → the predictions dataset + static config (categories,
                           ranks, rewards, leaderboard demo entries). Pure data.
        LAYER 2 · LOGIC  → scoring, streaks, crowd bonus, confidence stake,
                           ranks, resolution. Pure functions + a thin Store
-                          (the ONLY localStorage touch-point — swap it for an
-                          API client to go online). No DOM in here.
+                          (the ONLY localStorage touch-point). No DOM in here.
        LAYER 3 · UI     → rendering, views/tabs, animations, dev panel.
+       LAYER 4 · NET    → Sync (static feed merge) + Net/Account (optional
+                          sign-in; mirrors server state, pushes picks).
 
      The layers are decoupled on purpose: to port this to a native app you
      replace the Store, keep LOGIC almost verbatim, and rebuild only UI.
@@ -102,9 +107,17 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .view-title{font-size:23px;font-weight:800;letter-spacing:-.03em;margin:4px 0 2px;}
 .view-sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;}
 
-/* CATEGORY CHIPS */
-.chips{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px 0 14px;margin:0;max-width:100%;scrollbar-width:none;}
+/* CATEGORY CHIPS — one row, never clipped: full-bleed horizontal scroller
+   (negative margins so it scrolls edge-to-edge past the view padding), tabs
+   never squish (flex:0 0 auto), scrollbar hidden, and a JS-toggled fade mask
+   hints that more tabs exist off-screen. */
+.chips{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  padding:2px 18px 14px;margin:0 -18px;max-width:none;scrollbar-width:none;
+  overscroll-behavior-x:contain;}
 .chips::-webkit-scrollbar{display:none;}
+.chips.fade-r{-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 48px),transparent);}
+.chips.fade-l{-webkit-mask-image:linear-gradient(90deg,transparent,#000 48px,#000 100%);mask-image:linear-gradient(90deg,transparent,#000 48px,#000 100%);}
+.chips.fade-lr{-webkit-mask-image:linear-gradient(90deg,transparent,#000 48px,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,transparent,#000 48px,#000 calc(100% - 48px),transparent);}
 .chip{flex:0 0 auto;padding:7px 14px;border-radius:999px;background:var(--card);border:1px solid var(--stroke);color:var(--muted);font-weight:600;font-size:13px;white-space:nowrap;transition:transform .12s,border-color .15s,color .15s,background .15s;}
 .chip.active{color:#fff;border-color:var(--accent);background:var(--accent);}
 .chip:active{transform:scale(.95);}
@@ -118,6 +131,12 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .cat-tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:7px;background:var(--card-2);border:1px solid var(--stroke);}
 .close-info{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--muted);text-align:right;}
 .close-info.soon{color:var(--accent);font-weight:700;}
+.close-info.urgent{color:var(--bad);font-weight:800;animation:urgentPulse 1.6s ease-in-out infinite;}
+@keyframes urgentPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+
+/* SPACE & NASA (Stardance) — subtle violet treatment so the theme pops */
+.card.card-space{border-color:rgba(124,58,237,.35);background:linear-gradient(180deg,rgba(124,58,237,.055),transparent 46%),var(--card);}
+.card.card-space .cat-tag{border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.08);}
 .points-tag{font-size:11.5px;font-weight:800;color:var(--gold);}
 .q-text{font-size:16px;font-weight:700;line-height:1.35;margin:2px 0 13px;letter-spacing:-.01em;}
 
@@ -261,6 +280,22 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .celebrate .points-pop{font-size:22px;font-weight:800;color:var(--gold);margin-top:10px;}
 .celebrate .breakdown{font-size:12px;color:var(--muted);font-weight:600;margin-top:6px;line-height:1.6;}
 .celebrate .tap-hint{color:var(--muted);font-size:12px;margin-top:22px;font-weight:500;}
+/* contrarian win — the core thrill gets extra gold flair */
+.celebrate-card.contrarian{border-color:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 40%,transparent),0 20px 60px rgba(0,0,0,.3);}
+.celebrate-card.contrarian .headline{color:var(--gold);}
+.celebrate-card.contrarian .kicker{color:var(--gold);}
+/* gentle miss reveal — calm, no fireworks */
+.celebrate-card.miss .headline{color:var(--text);font-size:26px;}
+
+/* PROFILE STORY */
+.story-card{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:14px;box-shadow:var(--shadow);margin-bottom:10px;}
+.story-card .ic{width:44px;height:44px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;font-size:22px;background:var(--card-2);border:1px solid var(--stroke);}
+.story-card .k{font-size:10.5px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;}
+.story-card .v{font-weight:700;font-size:14.5px;margin-top:1px;}
+.story-card .s{color:var(--muted);font-size:12px;font-weight:500;margin-top:2px;line-height:1.45;}
+.story-card.persona{border-color:color-mix(in srgb,var(--gold) 45%,var(--stroke));background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 7%,transparent),transparent 60%),var(--card);}
+.share-stats-btn{width:100%;margin-top:2px;padding:12px;border-radius:11px;font-weight:800;font-size:14px;background:var(--accent);color:#fff;transition:transform .12s;}
+.share-stats-btn:active{transform:scale(.98);}
 #confetti{position:fixed;inset:0;z-index:80;pointer-events:none;}
 .toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);z-index:70;background:var(--text);color:var(--bg-0);font-weight:700;font-size:13.5px;padding:11px 18px;border-radius:999px;opacity:0;transition:all .3s;box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none;max-width:88%;text-align:center;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -668,7 +703,8 @@ const Store = (() => {
   function defaultState(){
     return { username:null, picks:{}, resolutions:{}, activeTheme:"default",
              activeTitle:null, celebrated:[], seenUnlocks:[], seenRank:"Rookie",
-             daily:{ streak:0, best:0, lastDay:null }, bonusPoints:0 };
+             daily:{ streak:0, best:0, lastDay:null }, bonusPoints:0,
+             callDays:{ streak:0, best:0, lastDay:null } };  // "made a call today" streak (device-local)
   }
   function load(){
     try{
@@ -849,6 +885,56 @@ const Game = (() => {
     return { alreadyCheckedIn:false, streak:daily.streak, best:daily.best, bonusAwarded, broke, lostStreak };
   }
 
+  /* "Made a call today" streak — distinct from BOTH the correct-answer streak
+     and the check-in streak: it rewards actually locking a pick each day.
+     Device-local, no points attached (check-in already pays), pure bragging. */
+  function recordCallDay(state){
+    const today = new Date().toISOString().slice(0,10);
+    const cd = state.callDays || (state.callDays = { streak:0, best:0, lastDay:null });
+    if(cd.lastDay === today) return { already:true, streak:cd.streak, best:cd.best };
+    const yesterday = new Date(Date.now()-DAY).toISOString().slice(0,10);
+    cd.streak = cd.lastDay === yesterday ? cd.streak+1 : 1;
+    cd.best = Math.max(cd.best, cd.streak);
+    cd.lastDay = today;
+    return { already:false, streak:cd.streak, best:cd.best };
+  }
+
+  /* Per-category record from resolved picks → "your best category".
+     Needs ≥2 resolved calls (and ≥1 win) in a category before it counts. */
+  function categoryStats(state, d){
+    const per = (d || computeDerived(state)).per;
+    const map = {};
+    for(const id of Object.keys(per)){
+      const pred = DATA.byId[id]; if(!pred) continue;
+      const m = map[pred.category] || (map[pred.category] = { category:pred.category, correct:0, total:0 });
+      m.total++; if(per[id].isCorrect) m.correct++;
+    }
+    const list = Object.values(map).map(m =>
+      Object.assign(m, { accuracy: m.total ? Math.round(m.correct/m.total*100) : 0 }));
+    list.sort((a,b)=> b.accuracy-a.accuracy || b.total-a.total || a.category.localeCompare(b.category));
+    const best = list.find(m => m.total>=2 && m.correct>0) || null;
+    return { list, best };
+  }
+
+  /* Local "prediction personality" — revealed after 10 resolved calls.
+     Deterministic rules over on-device stats; nothing leaves the device. */
+  const PERSONALITY_MIN = 10;
+  function personality(d, cats){
+    if(d.totalResolved < PERSONALITY_MIN) return null;
+    const contrarianShare = d.correct ? d.beatWins/d.correct : 0;
+    if(contrarianShare >= 0.5 && d.beatWins >= 3)
+      return { name:"The Contrarian", emoji:"⚔️", blurb:"You win most when you go against the crowd — and you keep doing it." };
+    if(d.peakStreak >= 5)
+      return { name:"Streak Hunter", emoji:"🔥", blurb:`Your best run is ${d.peakStreak} in a row. You play for momentum.` };
+    if(cats && cats.best && cats.best.category === "space")
+      return { name:"Space Cadet", emoji:"🚀", blurb:"Your sharpest calls are about rockets, missions, and the Moon." };
+    if(d.accuracy >= 60 && contrarianShare <= 0.25)
+      return { name:"Favorite-Backer", emoji:"🛡️", blurb:"You read the room, back the consensus, and you're usually right." };
+    if(d.accuracy >= 45)
+      return { name:"Balanced Forecaster", emoji:"⚖️", blurb:"Part crowd-reader, part contrarian. Hard to predict the predictor." };
+    return { name:"Bold Caller", emoji:"🎲", blurb:"You take the shots others won't. When they land, they land big." };
+  }
+
   function rankFor(points){ let r=DATA.RANKS[0]; for(const x of DATA.RANKS) if(points>=x.min) r=x; return r; }
   function rankIndex(name){ return DATA.RANKS.findIndex(r=>r.name===name); }
   function nextRankFor(points){ return DATA.RANKS.find(r=>r.min>points) || null; }
@@ -877,6 +963,7 @@ const Game = (() => {
     CONFIDENCE_PER_WEEK, EVERGREEN_DEMO,
     closeTime, isClosed, isResolved, daysUntilClose, effectiveCrowd,
     streakBonus, beatBonus, isoWeekKey, confidenceLeft, dailyCheckin,
+    recordCallDay, categoryStats, personality, PERSONALITY_MIN,
     computeDerived, rankFor, rankIndex, nextRankFor, rankProgress,
     unlockedRewards, unlockProgressText,
   };
@@ -950,6 +1037,7 @@ const FX = (() => {
   function next(){
     if(!queue.length){ showing=false; return; }
     showing=true; const c=queue.shift();
+    card.className = "celebrate-card" + (c.klass ? " " + c.klass : "");  // e.g. contrarian gold flair
     card.innerHTML =
       (c.kicker?`<div class="kicker">${c.kicker}</div>`:"") +
       (c.emoji?`<div class="big-emoji">${c.emoji}</div>`:"") +
@@ -959,7 +1047,7 @@ const FX = (() => {
       (c.breakdown?`<div class="breakdown">${c.breakdown}</div>`:"") +
       `<div class="tap-hint">tap anywhere to continue</div>`;
     overlay.classList.add("show");
-    if(c.withConfetti!==false) confetti();
+    if(c.withConfetti!==false) confetti(c.confettiAmount||130);
     try{ navigator.vibrate && navigator.vibrate([0,40,30,60]); }catch(e){}
   }
   function dismiss(){ if(!showing) return; overlay.classList.remove("show");
@@ -987,9 +1075,13 @@ const UI = (() => {
 
   function closeLabel(pred){
     if(Game.isResolved(state, pred.id)) return { text:"Resolved", soon:false };
+    const ms = Game.closeTime(pred) - Date.now();
+    if(ms < 0) return { text:"Closed", soon:false };
+    if(ms <= 24*3600*1000){                            // last 24h → urgency
+      const h = Math.max(1, Math.ceil(ms/3600000));
+      return { text:`⏳ Closes in ${h}h`, soon:true, urgent:true };
+    }
     const d = Game.daysUntilClose(pred);
-    if(d<0) return { text:"Closed", soon:false };
-    if(d===0) return { text:"Closes today", soon:true };
     if(d===1) return { text:"Closes tomorrow", soon:true };
     if(d<=7) return { text:`Closes in ${d} days`, soon:true };
     return { text:"Closes "+new Date(Game.closeTime(pred)).toLocaleDateString(undefined,{month:"short",day:"numeric"}), soon:false };
@@ -1032,10 +1124,22 @@ const UI = (() => {
     const chips = $("#feedChips");
     const cats = ["all", ...Object.keys(DATA.CATEGORIES)];
     chips.innerHTML = cats.map(c=>{
-      const label = c==="all" ? "All" : catOf(c).name;
+      const label = c==="all" ? "All" : (c==="space" ? "🚀 " : "") + catOf(c).name;
       return `<button class="chip ${feedFilter===c?"active":""}" data-cat="${c}">${label}</button>`;
     }).join("");
     chips.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",()=>{feedFilter=ch.dataset.cat;renderFeed();}));
+    // overflow affordance: fade the clipped edge(s); keep the active tab in view
+    const updateFade = ()=>{
+      const l = chips.scrollLeft > 4;
+      const r = chips.scrollLeft < chips.scrollWidth - chips.clientWidth - 4;
+      chips.classList.toggle("fade-l", l && !r);
+      chips.classList.toggle("fade-r", r && !l);
+      chips.classList.toggle("fade-lr", l && r);
+    };
+    chips.onscroll = updateFade;
+    updateFade();
+    const active = chips.querySelector(".chip.active");
+    if(active && active.scrollIntoView) active.scrollIntoView({ block:"nearest", inline:"nearest" });
 
     let list = DATA.PREDICTIONS.slice();
     if(feedFilter!=="all") list = list.filter(p=>p.category===feedFilter);
@@ -1127,11 +1231,11 @@ const UI = (() => {
     // share your call — any locked-in pick can be bragged about
     if(pick) footer += `<button class="share-btn" data-share="${pred.id}" aria-label="Share this call">Share ↗</button>`;
 
-    return `<div class="card" data-card="${pred.id}" style="animation-delay:${Math.min(index*.035,.4)}s">
+    return `<div class="card ${pred.category==="space"?"card-space":""}" data-card="${pred.id}" style="animation-delay:${Math.min(index*.035,.4)}s">
       <div class="card-top">
-        <span class="cat-tag" style="color:${cat.color}">${cat.name}</span>
+        <span class="cat-tag" style="color:${cat.color}">${pred.category==="space"?"🚀 ":""}${cat.name}</span>
         <span class="points-tag">+${pred.pointValue}</span>
-        <span class="close-info ${cl.soon?"soon":""}">${cl.text}</span>
+        <span class="close-info ${cl.urgent?"urgent":cl.soon?"soon":""}">${cl.text}</span>
       </div>
       <div class="q-text">${esc(pred.question)}</div>
       ${probBar}
@@ -1151,9 +1255,164 @@ const UI = (() => {
       btn.addEventListener("click",()=>shareCall(btn.dataset.share)));
   }
 
-  /* ---- SHARE YOUR CALL ----
-     Web Share API where available, clipboard otherwise. The text contains ONLY
-     the prediction, the crowd %, and the app link — never anything personal. */
+  /* ---- VISUAL SHARE CARDS ----
+     Canvas-drawn branded image → Web Share (as a file) on supported devices,
+     else copy-image-to-clipboard, else download; plain-text share is the last
+     resort. Cards contain ONLY the prediction, the pick, the crowd %, and the
+     app name/link — never anything personal. Space cards get a starfield 🌌. */
+  const APP_LINK = /^https?:$/.test(location.protocol)
+    ? location.origin + location.pathname
+    : "https://prajith-vishnu.github.io/called-it/";
+  const CARD_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
+  function rr(x, l, t, w, h, r){ // rounded rect path (canvas roundRect fallback)
+    x.beginPath();
+    x.moveTo(l+r, t); x.arcTo(l+w, t, l+w, t+h, r); x.arcTo(l+w, t+h, l, t+h, r);
+    x.arcTo(l, t+h, l, t, r); x.arcTo(l, t, l+w, t, r); x.closePath();
+  }
+  function wrapText(x, text, maxW, font){
+    x.font = font;
+    const words = String(text).split(/\s+/), lines = [];
+    let cur = "";
+    for(const w of words){
+      const t = cur ? cur+" "+w : w;
+      if(x.measureText(t).width > maxW && cur){ lines.push(cur); cur = w; }
+      else cur = t;
+    }
+    if(cur) lines.push(cur);
+    return lines;
+  }
+
+  /* Shared 1080×1080 chrome: background, framed card, logo. Returns ctx + palette. */
+  function cardBase(space){
+    const cv = document.createElement("canvas"); cv.width = 1080; cv.height = 1080;
+    const x = cv.getContext("2d");
+    if(space){
+      const g = x.createLinearGradient(0,0,0,1080);
+      g.addColorStop(0,"#0b0f2a"); g.addColorStop(1,"#151c45");
+      x.fillStyle = g; x.fillRect(0,0,1080,1080);
+      for(let i=0;i<110;i++){                                   // starfield
+        x.globalAlpha = .2 + Math.random()*.6;
+        x.fillStyle = "#fff";
+        x.beginPath(); x.arc(Math.random()*1080, Math.random()*1080, Math.random()*1.9+.6, 0, 7); x.fill();
+      }
+      x.globalAlpha = 1;
+    } else {
+      x.fillStyle = "#f4f5f7"; x.fillRect(0,0,1080,1080);
+    }
+    rr(x, 60, 60, 960, 960, 40);
+    x.fillStyle = space ? "rgba(17,23,58,.78)" : "#ffffff"; x.fill();
+    x.lineWidth = 3; x.strokeStyle = space ? "rgba(139,120,255,.4)" : "#e6e8ec"; x.stroke();
+    // logo mark + wordmark
+    rr(x, 120, 118, 86, 86, 26);
+    const lg = x.createLinearGradient(120,118,206,204);
+    lg.addColorStop(0,"#1652f0"); lg.addColorStop(1,"#3f7bff");
+    x.fillStyle = lg; x.fill();
+    x.strokeStyle = "#fff"; x.lineWidth = 11; x.lineCap = "round"; x.lineJoin = "round";
+    x.beginPath(); x.moveTo(141,162); x.lineTo(160,181); x.lineTo(188,139); x.stroke();
+    x.textBaseline = "middle";
+    x.fillStyle = space ? "#eef2f8" : "#0e1524";
+    x.font = "800 46px "+CARD_FONT;
+    x.fillText("Called It", 228, 163);
+    return { cv, x,
+      ink: space ? "#eef2f8" : "#0e1524",
+      muted: space ? "#9aa6c0" : "#69707d",
+      accent: space ? "#8b78ff" : "#1652f0" };
+  }
+  function cardFooter(x, muted){
+    x.font = "600 30px "+CARD_FONT; x.fillStyle = muted;
+    x.fillText(APP_LINK.replace(/^https?:\/\//,""), 120, 924);
+    x.font = "500 26px "+CARD_FONT;
+    x.fillText("free · no money — just bragging rights", 120, 966);
+  }
+
+  function drawCallCard(pred, pick, pctAgreed){
+    const { cv, x, ink, muted, accent } = cardBase(pred.category==="space");
+    x.fillStyle = accent; x.font = "800 34px "+CARD_FONT;
+    x.fillText((pred.category==="space" ? "🚀 " : "") + "I CALLED IT 🎯", 120, 286);
+    // question (wrapped)
+    x.fillStyle = ink;
+    const qLines = wrapText(x, pred.question, 840, "800 54px "+CARD_FONT).slice(0,5);
+    qLines.forEach((l,i)=>x.fillText(l, 120, 366 + i*66));
+    let y = 366 + qLines.length*66 + 44;
+    // the pick, in an accent pill
+    x.font = "700 32px "+CARD_FONT; x.fillStyle = muted;
+    x.fillText("I said:", 120, y); y += 58;
+    x.font = "800 62px "+CARD_FONT;
+    const pillW = Math.min(840, x.measureText(pick.option).width + 76);
+    rr(x, 120, y-44, pillW, 92, 24);
+    x.fillStyle = pred.category==="space" ? "rgba(139,120,255,.18)" : "rgba(22,82,240,.09)"; x.fill();
+    x.fillStyle = accent; x.fillText(pick.option, 158, y+3); y += 106;
+    // the crowd line — the brag
+    x.font = "600 38px "+CARD_FONT; x.fillStyle = muted;
+    x.fillText(pctAgreed<=50 ? `only ${pctAgreed}% of the crowd agreed 👀` : `${pctAgreed}% of the crowd agreed`, 120, y);
+    cardFooter(x, muted);
+    return cv;
+  }
+
+  function drawStatsCard(d, persona){
+    const { cv, x, ink, muted, accent } = cardBase(false);
+    x.fillStyle = accent; x.font = "800 34px "+CARD_FONT;
+    x.fillText("MY PREDICTION STATS 📊", 120, 286);
+    x.fillStyle = ink; x.font = "800 118px "+CARD_FONT;
+    x.fillText(`${d.accuracy}%`, 120, 408);
+    x.font = "700 40px "+CARD_FONT; x.fillStyle = muted;
+    x.fillText(`accuracy (${d.correct}/${d.totalResolved} calls)`, 120, 488);
+    const rows = [
+      ["🏆", `${d.points} points`],
+      ["🔥", `best streak: ${d.peakStreak} in a row`],
+      ["⚔️", `beat the crowd ${d.beatWins}×`],
+    ];
+    if(persona) rows.push([persona.emoji, `personality: ${persona.name}`]);
+    x.font = "700 44px "+CARD_FONT;
+    rows.forEach((r,i)=>{
+      x.fillStyle = ink;
+      x.fillText(`${r[0]}  ${r[1]}`, 120, 580 + i*76);
+    });
+    cardFooter(x, muted);
+    return cv;
+  }
+
+  /* Delivery ladder: share sheet (image file) → copy image → download → text. */
+  async function deliverCard(cv, filename, fallbackText){
+    let blob = null;
+    try{ blob = await new Promise(res=>cv.toBlob(res, "image/png")); }catch(e){}
+    if(blob){
+      const file = new File([blob], filename, { type:"image/png" });
+      try{
+        if(navigator.canShare && navigator.canShare({ files:[file] })){
+          await navigator.share({ files:[file], text: fallbackText });
+          return;
+        }
+      }catch(e){ if(e && e.name==="AbortError") return; }
+      try{
+        if(navigator.clipboard && window.ClipboardItem){
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+          FX.toast("Card copied — paste it anywhere 🖼️"); return;
+        }
+      }catch(e){}
+      try{
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 4000);
+        FX.toast("Card saved 🖼️"); return;
+      }catch(e){}
+    }
+    await shareText(fallbackText);                     // last resort: plain text
+  }
+  async function shareText(text){
+    try{
+      if(navigator.share){ await navigator.share({ text }); return; }
+      await navigator.clipboard.writeText(text);
+      FX.toast("Copied — paste it anywhere 📋");
+    }catch(e){
+      if(e && e.name==="AbortError") return;
+      FX.toast("Sharing isn't available on this device");
+    }
+  }
+
   async function shareCall(predId){
     const pred = DATA.byId[predId];
     const pick = state.picks[predId];
@@ -1161,25 +1420,15 @@ const UI = (() => {
     const ec = Game.effectiveCrowd(state, pred);
     const i = pred.options.indexOf(pick.option);
     const p = Math.round((i>=0 ? ec.pct[i] : 0)*100);
-    const link = /^https?:$/.test(location.protocol)
-      ? location.origin + location.pathname
-      : "https://prajith-vishnu.github.io/called-it/";
     const crowd = p<=50 ? `only ${p}% of the crowd agrees 👀` : `${p}% of the crowd agrees`;
-    const text = `I called it: ${pick.option} on "${pred.question}" — ${crowd} ${link}`;
-    try{
-      if(navigator.share){ await navigator.share({ text }); return; }
-      await navigator.clipboard.writeText(text);
-      FX.toast("Copied — paste it anywhere 📋");
-    }catch(e){
-      if(e && e.name==="AbortError") return;          // user closed the share sheet
-      try{                                            // legacy clipboard fallback
-        const ta = document.createElement("textarea");
-        ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
-        document.body.appendChild(ta); ta.select();
-        document.execCommand("copy"); ta.remove();
-        FX.toast("Copied — paste it anywhere 📋");
-      }catch(e2){ FX.toast("Sharing isn't available on this device"); }
-    }
+    const text = `I called it: ${pick.option} on "${pred.question}" — ${crowd} ${APP_LINK}`;
+    await deliverCard(drawCallCard(pred, pick, p), "called-it.png", text);
+  }
+  async function shareStats(){
+    const d = derived;
+    const persona = Game.personality(d, Game.categoryStats(state, d));
+    const text = `My Called It stats: ${d.accuracy}% accuracy · ${d.points} pts · best streak ${d.peakStreak} 🔥 ${APP_LINK}`;
+    await deliverCard(drawStatsCard(d, persona), "called-it-stats.png", text);
   }
 
   /* ---- core interaction: LOCK IN ----
@@ -1204,6 +1453,9 @@ const UI = (() => {
     if(cardEl){ cardEl.classList.remove("locked-flash"); void cardEl.offsetWidth; cardEl.classList.add("locked-flash"); }
     try{ navigator.vibrate && navigator.vibrate(18); }catch(e){}
     FX.toast(already? "Pick updated 🔁" : "Locked in! 🔒");
+    // "made a call today" streak — reward showing up, separate from being right
+    const cd = Game.recordCallDay(state);
+    if(!cd.already && cd.streak>=2) setTimeout(()=>FX.toast(`🗓️ ${cd.streak}-day calling streak!`), 1500);
     commit();
     if(state._online) Account.pushPick(predId, prev);
   }
@@ -1253,6 +1505,42 @@ const UI = (() => {
     wireCards(list);
   }
 
+  /* ---- PROFILE: "your story" — computed entirely from on-device data ---- */
+  function storyHTML(d){
+    const cats = Game.categoryStats(state, d);
+    const best = cats.best;
+    const bestCat = best ? catOf(best.category) : null;
+    const persona = Game.personality(d, cats);
+    const left = Math.max(0, Game.PERSONALITY_MIN - d.totalResolved);
+
+    const bestCard = best
+      ? `<div class="story-card"><div class="ic">${bestCat.emoji}</div><div>
+           <div class="k">Your best category</div>
+           <div class="v">${esc(bestCat.name)} · ${best.accuracy}%</div>
+           <div class="s">${best.correct} of ${best.total} calls right${best.category==="space"?" — the stars align 🚀":""}</div>
+         </div></div>`
+      : `<div class="story-card"><div class="ic">🗺️</div><div>
+           <div class="k">Your best category</div>
+           <div class="v">Still exploring</div>
+           <div class="s">Get 2+ calls resolved in a category to find your specialty.</div>
+         </div></div>`;
+
+    const personaCard = persona
+      ? `<div class="story-card persona"><div class="ic">${persona.emoji}</div><div>
+           <div class="k">Prediction personality</div>
+           <div class="v">${esc(persona.name)}</div>
+           <div class="s">${esc(persona.blurb)}</div>
+         </div></div>`
+      : `<div class="story-card"><div class="ic">🔮</div><div>
+           <div class="k">Prediction personality</div>
+           <div class="v">Locked</div>
+           <div class="s">Resolve ${left} more call${left===1?"":"s"} to reveal it (${d.totalResolved}/${Game.PERSONALITY_MIN}). Computed on this device only.</div>
+         </div></div>`;
+
+    return `<div class="section-h">📖 Your story</div>${bestCard}${personaCard}
+      <button class="share-stats-btn" id="shareStatsBtn">📤 Share my stats</button>`;
+  }
+
   /* ---- PROFILE ---- */
   function renderProfile(){
     const d = derived, rank = d.rank;
@@ -1299,7 +1587,11 @@ const UI = (() => {
         <div class="stat-box"><div class="num gold">📅 ${d.dailyStreak}</div><div class="cap">Day streak (best ${d.peakDaily})</div></div>
         <div class="stat-box"><div class="num">${Object.keys(state.picks).length}</div><div class="cap">Calls made</div></div>
         <div class="stat-box"><div class="num accent">⚔️ ${d.beatWins}</div><div class="cap">Beat-the-crowd wins</div></div>
+        <div class="stat-box"><div class="num">🗓️ ${(state.callDays&&state.callDays.streak)||0}</div><div class="cap">Days making calls (best ${(state.callDays&&state.callDays.best)||0})</div></div>
+        <div class="stat-box"><div class="num good">🏅 ${d.peakStreak}</div><div class="cap">Best call streak</div></div>
       </div>
+
+      ${storyHTML(d)}
       ${state._online
         ? `<div class="lb-note">✅ Signed in as <b>@${esc(state.username||"")}</b> — your picks are scored on the server and count on the live leaderboard.</div>`
         : `<div class="lb-note">👤 Playing as a guest on this device. <b>Sign in</b> (top right) to save progress and join the live leaderboard.</div>`}
@@ -1323,6 +1615,8 @@ const UI = (() => {
     }));
     $("#titleRow").querySelectorAll("[data-title]").forEach(b=>b.addEventListener("click",()=>{ state.activeTitle=b.dataset.title||null; commit(); }));
     $("#themeRow").querySelectorAll("[data-theme]").forEach(b=>b.addEventListener("click",()=>{ state.activeTheme=b.dataset.theme; commit(); }));
+    const ssb = $("#shareStatsBtn");
+    if(ssb) ssb.addEventListener("click", shareStats);
   }
 
   /* ---- REWARDS (milestone unlocks; never purchased/spent) ---- */
@@ -1435,15 +1729,47 @@ const UI = (() => {
     let newWin = false;
     for(const id of Object.keys(derived.per)){
       const r = derived.per[id];
-      if(!r.isCorrect || state.celebrated.includes(id)) continue;
-      state.celebrated.push(id); newWin = true;
+      if(state.celebrated.includes(id)) continue;
+      state.celebrated.push(id);
       const pred = DATA.byId[id];
-      let parts = [`+${r.base} base`];
-      if(r.beat) parts.push(`+${r.beat} beat-crowd`);
-      if(r.sBonus) parts.push(`+${r.sBonus} streak`);
-      if(r.cBonus) parts.push(`+${r.cBonus} confidence`);
-      FX.celebrate({ kicker:"Prediction resolved", emoji:"🎯", headline:"YOU CALLED IT!",
-        detail: pred ? pred.question : "", points:r.net, breakdown:parts.join(" · ") });
+      const pick = state.picks[id];
+      if(!pred || !pick) continue;
+
+      // how did YOU do against the CROWD? (the reveal is the story, not just ✓/✗)
+      const ec = Game.effectiveCrowd(state, pred);
+      const pi = pred.options.indexOf(pick.option);
+      const pickPct = Math.round((pi>=0 ? ec.pct[pi] : 0)*100);
+      let topI = 0; ec.pct.forEach((p,i)=>{ if(p>ec.pct[topI]) topI=i; });
+      const favorite = pred.options[topI];
+
+      if(r.isCorrect){
+        newWin = true;
+        let parts = [`+${r.base} base`];
+        if(r.beat) parts.push(`+${r.beat} beat-crowd`);
+        if(r.sBonus) parts.push(`+${r.sBonus} streak`);
+        if(r.cBonus) parts.push(`+${r.cBonus} confidence`);
+        if(r.beat){
+          // contrarian win — the core thrill: gold flair + extra confetti
+          FX.celebrate({ klass:"contrarian", confettiAmount:260,
+            kicker:"Against the crowd", emoji:"🔥", headline:"YOU BEAT THE CROWD!",
+            detail:`Only ${pickPct}% said “${pick.option}” — you saw it coming. +${r.beat} bonus points.`,
+            points:r.net, breakdown:parts.join(" · ") });
+        } else {
+          FX.celebrate({ kicker:"Prediction resolved", emoji:"🎯", headline:"YOU CALLED IT!",
+            detail:`You said “${pick.option}” — ${pickPct}% of the crowd agreed.`,
+            points:r.net, breakdown:parts.join(" · ") });
+        }
+      } else {
+        // gentle miss reveal — no harsh language, no fireworks
+        const answer = state.resolutions[id] ? state.resolutions[id].answer : null;
+        const together = favorite===pick.option && favorite!==answer;
+        FX.celebrate({ klass:"miss", withConfetti:false,
+          kicker:"Resolved", emoji:"🌤️", headline:"Not this time",
+          detail: together
+            ? `You said “${pick.option}” — so did ${pickPct}% of the crowd. It landed on “${answer}”.`
+            : `You said “${pick.option}” — the crowd leaned “${favorite}”. It landed on “${answer}”.`,
+          breakdown: r.cLoss ? `Confidence stake: −${r.cLoss} pts` : "" });
+      }
     }
     if(newWin && derived.streak>=3){
       FX.celebrate({ kicker:"On fire", emoji:"🔥", headline:`${derived.streak} in a row!`, detail:"Streak bonus stacking up.", withConfetti:false });

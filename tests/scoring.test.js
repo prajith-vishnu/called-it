@@ -38,9 +38,9 @@ const PREDICTIONS = [
   { id: "dummy", category: "general", question: "d", options: ["Yes", "No"], crowd: [1, 1], closeDate: "2099-01-01", pointValue: 10, resolution: "pending" },
   { id: "pA", category: "general", question: "A?", options: ["Yes", "No"], crowd: [80, 20], closeDate: "2099-01-01", pointValue: 20, resolution: "pending", noShift: true },
   { id: "pB", category: "general", question: "B?", options: ["A", "B"], crowd: [50, 50], closeDate: "2099-01-01", pointValue: 30, resolution: "pending", noShift: true },
-  { id: "pC", category: "general", question: "C?", options: ["Yes", "No"], crowd: [1, 1], closeDate: "2099-01-01", pointValue: 10, resolution: "pending", noShift: true },
-  { id: "pD", category: "general", question: "D?", options: ["Yes", "No"], crowd: [1, 1], closeDate: "2099-01-01", pointValue: 10, resolution: "pending", noShift: true },
-  { id: "pE", category: "general", question: "E?", options: ["Yes", "No"], crowd: [1, 1], closeDate: "2099-01-01", pointValue: 10, resolution: "pending", noShift: true },
+  { id: "pC", category: "space", question: "C?", options: ["Yes", "No"], crowd: [1, 1], closeDate: "2099-01-01", pointValue: 10, resolution: "pending", noShift: true },
+  { id: "pD", category: "space", question: "D?", options: ["Yes", "No"], crowd: [1, 1], closeDate: "2099-01-01", pointValue: 10, resolution: "pending", noShift: true },
+  { id: "pE", category: "music", question: "E?", options: ["Yes", "No"], crowd: [1, 1], closeDate: "2099-01-01", pointValue: 10, resolution: "pending", noShift: true },
 ];
 const byId = {};
 for (const p of PREDICTIONS) byId[p.id] = p;
@@ -204,6 +204,82 @@ test("second check-in the same day is idempotent", () => {
   const r2 = Game.dailyCheckin(s);
   assert.equal(r2.alreadyCheckedIn, true);
   assert.equal(s.bonusPoints, 10);                    // no double award
+});
+
+// ── "made a call today" streak (device-local stickiness) ─────────────────────
+test("calling-day streak: starts at 1 and is idempotent within a day", () => {
+  const s = state();
+  const r1 = Game.recordCallDay(s);
+  assert.equal(r1.already, false);
+  assert.equal(r1.streak, 1);
+  const r2 = Game.recordCallDay(s);
+  assert.equal(r2.already, true);
+  assert.equal(s.callDays.streak, 1);
+});
+
+test("calling-day streak: consecutive days increment, a gap resets", () => {
+  const day = (offset) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+  const s = state();
+  s.callDays = { streak: 4, best: 4, lastDay: day(-1) };      // called yesterday
+  assert.equal(Game.recordCallDay(s).streak, 5);              // today → 5 in a row
+  const s2 = state();
+  s2.callDays = { streak: 6, best: 6, lastDay: day(-3) };     // skipped two days
+  const r = Game.recordCallDay(s2);
+  assert.equal(r.streak, 1, "gap resets the streak");
+  assert.equal(r.best, 6, "best is preserved");
+});
+
+// ── best category + prediction personality (profile story) ──────────────────
+test("categoryStats finds the best category (min 2 resolved, 1+ win)", () => {
+  const s = state(
+    {
+      pC: { option: "Yes", confident: false, at: 1 },         // space, win
+      pD: { option: "Yes", confident: false, at: 2 },         // space, win
+      pA: { option: "Yes", confident: false, at: 3 },         // general, miss
+    },
+    {
+      pC: { answer: "Yes", at: 101 },
+      pD: { answer: "Yes", at: 102 },
+      pA: { answer: "No", at: 103 },
+    }
+  );
+  const cats = Game.categoryStats(s);
+  assert.equal(cats.best.category, "space");
+  assert.equal(cats.best.accuracy, 100);
+  assert.equal(cats.best.total, 2);
+});
+
+test("personality stays locked under 10 resolved calls", () => {
+  const d = { totalResolved: 9, correct: 9, beatWins: 9, peakStreak: 9, accuracy: 100 };
+  assert.equal(Game.personality(d, { best: null }), null);
+});
+
+test("personality rules: contrarian, streak hunter, favorite-backer", () => {
+  const contrarian = Game.personality(
+    { totalResolved: 12, correct: 8, beatWins: 5, peakStreak: 3, accuracy: 66 }, { best: null });
+  assert.equal(contrarian.name, "The Contrarian");
+
+  const hunter = Game.personality(
+    { totalResolved: 12, correct: 8, beatWins: 0, peakStreak: 6, accuracy: 66 }, { best: null });
+  assert.equal(hunter.name, "Streak Hunter");
+
+  const backer = Game.personality(
+    { totalResolved: 12, correct: 8, beatWins: 1, peakStreak: 3, accuracy: 66 },
+    { best: { category: "music" } });
+  assert.equal(backer.name, "Favorite-Backer");
+
+  const cadet = Game.personality(
+    { totalResolved: 12, correct: 6, beatWins: 2, peakStreak: 3, accuracy: 50 },
+    { best: { category: "space" } });
+  assert.equal(cadet.name, "Space Cadet");
+});
+
+// ── the crowd % shown in reveals and share cards ─────────────────────────────
+test("effectiveCrowd yields the pick % used by reveals/share cards", () => {
+  const s = state({ pA: { option: "No", confident: false, at: 1 } });
+  const ec = Game.effectiveCrowd(s, DATA.byId.pA);              // 80/20 + own pick
+  assert.equal(Math.round(ec.pct[1] * 100), 21);                // "only 21% said No"
+  assert.equal(ec.total, 101);
 });
 
 test("bonus points flow into total points and reward unlocks", () => {

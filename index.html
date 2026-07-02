@@ -71,6 +71,17 @@
   --good:#34d399; --bad:#fb7185; --gold:#fbbf24; --crowd:rgba(79,140,255,.14);
   --shadow:3px 3px 0 rgba(0,0,0,.5);
 }
+/* DARK MODE — an independent light/dark toggle (Profile → Appearance), not
+   the same thing as the "midnight" theme above. This only overrides the
+   neutral canvas tokens, so it composes with WHATEVER accent theme is
+   equipped (default/sunset/mint/bubblegum/gold) instead of replacing it —
+   e.g. gold accent + dark canvas is a combo "midnight" alone can't make.
+   Comes after every [data-theme] block so it wins the cascade regardless of
+   which accent is active. */
+[data-mode="dark"]{
+  --grad:#0c0d10; --bg-0:#121316; --card:#17181c; --card-2:#1e2024; --stroke:#34363b;
+  --text:#f0efe9; --muted:#96938a; --shadow:3px 3px 0 rgba(0,0,0,.5);
+}
 
 /* ============================================================================ BASE
    Type: a plain system sans for reading, a monospace for anything that's a
@@ -144,6 +155,12 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* SPACE & NASA (Stardance) — subtle violet treatment so the theme pops */
 .card.card-space{border-color:rgba(124,58,237,.35);background:linear-gradient(180deg,rgba(124,58,237,.055),transparent 46%),var(--card);}
 .card.card-space .cat-tag{border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.08);}
+
+/* PREDICTION OF THE DAY — the single soonest-closing marquee pick, pinned
+   above the feed with a gold spotlight so it can't be missed. */
+.potd-wrap{border:2px solid var(--gold);border-radius:12px;padding:10px 10px 2px;margin-bottom:16px;background:color-mix(in srgb,var(--gold) 7%,var(--card));}
+.potd-kicker{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin:2px 4px 8px;}
+.potd-wrap .card{margin-bottom:8px;}
 .points-tag{font-size:11.5px;font-weight:800;color:var(--gold);}
 .q-text{font-size:16px;font-weight:700;line-height:1.35;margin:2px 0 13px;letter-spacing:-.01em;}
 
@@ -715,7 +732,9 @@ const Store = (() => {
     return { username:null, picks:{}, resolutions:{}, activeTheme:"default",
              activeTitle:null, celebrated:[], seenUnlocks:[], seenRank:"Rookie",
              daily:{ streak:0, best:0, lastDay:null }, bonusPoints:0,
-             callDays:{ streak:0, best:0, lastDay:null } };  // "made a call today" streak (device-local)
+             callDays:{ streak:0, best:0, lastDay:null },  // "made a call today" streak (device-local)
+             darkMode:null,    // null = follow system, true/false = explicit override
+             soundOn:true };
   }
   function load(){
     try{
@@ -1059,6 +1078,7 @@ const FX = (() => {
       `<div class="tap-hint">tap anywhere to continue</div>`;
     overlay.classList.add("show");
     if(c.withConfetti!==false) confetti(c.confettiAmount||130);
+    if(c.sound) Sound.play(c.sound);
     try{ navigator.vibrate && navigator.vibrate([0,40,30,60]); }catch(e){}
   }
   function dismiss(){ if(!showing) return; overlay.classList.remove("show");
@@ -1070,6 +1090,47 @@ const FX = (() => {
     clearTimeout(tT); tT=setTimeout(()=>toastEl.classList.remove("show"),1700); }
 
   return { confetti, celebrate, toast };
+})();
+
+/* ---- Sound: short synthesized tones for key moments (Web Audio oscillators,
+   no audio files — zero extra weight, works offline). The AudioContext is
+   created lazily on the first play(), which only ever happens inside a click
+   handler, so it satisfies browsers' autoplay-needs-a-gesture rule without
+   any extra "enable sound" prompt. Muted by default is a bad default for a
+   game, so it starts ON, but Profile → Appearance can flip it off any time. */
+const Sound = (() => {
+  let ctx = null, enabled = true;
+  function ensureCtx(){
+    if(!ctx){ try{ ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ ctx = null; } }
+    if(ctx && ctx.state==="suspended") ctx.resume().catch(()=>{});
+    return ctx;
+  }
+  function tone(freqs, opts){
+    if(!enabled) return;
+    const c = ensureCtx(); if(!c) return;
+    opts = opts || {};
+    const dur = opts.dur||.11, gap = opts.gap||.09, vol = opts.vol||.09, type = opts.type||"sine";
+    freqs.forEach((f,i)=>{
+      const t0 = c.currentTime + i*gap;
+      const osc = c.createOscillator(), g = c.createGain();
+      osc.type = type; osc.frequency.setValueAtTime(f, t0);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(vol, t0+.012);
+      g.gain.exponentialRampToValueAtTime(.0001, t0+dur);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(t0); osc.stop(t0+dur+.02);
+    });
+  }
+  const SOUNDS = {
+    click:   () => tone([720], { dur:.05, vol:.05, type:"square" }),
+    win:     () => tone([523.25,659.25,783.99], { dur:.16, gap:.07, vol:.08 }),           // C-E-G, cheerful
+    bigwin:  () => tone([392,523.25,659.25,783.99,987.77], { dur:.2, gap:.06, vol:.09 }), // beat-the-crowd: bigger arpeggio
+    miss:    () => tone([392,329.63], { dur:.22, gap:.11, vol:.06 }),                     // soft descent, never harsh
+    checkin: () => tone([659.25,880], { dur:.14, gap:.08, vol:.07 }),
+  };
+  function play(name){ const fn = SOUNDS[name]; if(fn) try{ fn(); }catch(e){} }
+  function setEnabled(v){ enabled = !!v; }
+  return { play, setEnabled };
 })();
 
 const UI = (() => {
@@ -1098,6 +1159,32 @@ const UI = (() => {
     return { text:"Closes "+new Date(Game.closeTime(pred)).toLocaleDateString(undefined,{month:"short",day:"numeric"}), soon:false };
   }
 
+  /* Live countdown: ticks every second so a card under 24h counts down for
+     real instead of only updating on the next full re-render. Cheap by
+     design — it only touches .close-info nodes currently in the DOM, and
+     only rewrites text for ones inside the last day (the far-out "Closes
+     Jul 13" labels don't need per-second precision). Under the final hour it
+     switches to a live mm:ss. */
+  function tickCountdowns(){
+    const now = Date.now();
+    document.querySelectorAll(".close-info[data-close-ts]").forEach(el=>{
+      const ms = Number(el.dataset.closeTs) - now;
+      if(ms < 0){
+        if(el.textContent!=="Closed"){ el.textContent="Closed"; el.classList.remove("urgent","soon"); el.removeAttribute("data-close-ts"); }
+        return;
+      }
+      if(ms <= 3600000){
+        const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000);
+        el.textContent = `⏳ ${m}:${String(s).padStart(2,"0")}`;
+        el.classList.add("urgent"); el.classList.remove("soon");
+      } else if(ms <= 24*3600000){
+        const h = Math.max(1, Math.ceil(ms/3600000));
+        el.textContent = `⏳ Closes in ${h}h`;
+        el.classList.add("urgent"); el.classList.remove("soon");
+      }
+    });
+  }
+
   /* commit = persist + recompute derived + repaint. Call after any state change. */
   function commit(){
     // keep equipped cosmetics valid (e.g. after a reset they may not be unlocked)
@@ -1115,6 +1202,7 @@ const UI = (() => {
     }
     Store.save(state);
     applyTheme(state.activeTheme||"default");
+    Sound.setEnabled(state.soundOn!==false);
     paintHeader();
     render();
   }
@@ -1131,6 +1219,23 @@ const UI = (() => {
   }
 
   /* ---- FEED ---- */
+  /* Prediction of the Day: the single open pick that ends soonest, biased
+     toward the hand-picked "everyone recognizes this" marquee questions
+     (source noShift, e.g. World Cup winner, Wimbledon, iPhone launch) over
+     the long-tail ones. There's no guarantee something in the dataset
+     genuinely closes today — real predictions here run weeks to months out
+     — so this surfaces the closest, highest-profile thing to root for
+     instead of inventing a fake same-day event. Only shown on "All" so it
+     never looks like it belongs to whatever category is filtered.        */
+  function predictionOfTheDay(){
+    if(feedFilter!=="all") return null;
+    const open = DATA.PREDICTIONS.filter(p=>!Game.isResolved(state,p.id) && !Game.isClosed(p));
+    if(!open.length) return null;
+    const marquee = open.filter(p=>p.noShift);
+    const pool = marquee.length ? marquee : open;
+    return pool.reduce((soonest,p)=>Game.closeTime(p)<Game.closeTime(soonest)?p:soonest, pool[0]);
+  }
+
   function renderFeed(){
     const chips = $("#feedChips");
     const cats = ["all", ...Object.keys(DATA.CATEGORIES)];
@@ -1152,7 +1257,10 @@ const UI = (() => {
     const active = chips.querySelector(".chip.active");
     if(active && active.scrollIntoView) active.scrollIntoView({ block:"nearest", inline:"nearest" });
 
+    const potd = predictionOfTheDay();
+
     let list = DATA.PREDICTIONS.slice();
+    if(potd) list = list.filter(p=>p.id!==potd.id);        // don't show it twice
     if(feedFilter!=="all") list = list.filter(p=>p.category===feedFilter);
     // open + closing-soonest first; resolved/closed sink to the bottom
     list.sort((a,b)=>{
@@ -1160,9 +1268,12 @@ const UI = (() => {
       if(ra!==rb) return ra?1:-1;
       return Game.closeTime(a)-Game.closeTime(b);
     });
+    const potdHTML = potd
+      ? `<div class="potd-wrap"><div class="potd-kicker">🌟 Prediction of the Day — ends fast, everyone's watching</div>${cardHTML(potd,0)}</div>`
+      : "";
     const feed = $("#feed");
-    feed.innerHTML = list.map((p,i)=>cardHTML(p,i)).join("") ||
-      `<div class="empty"><div class="big">🤷</div>No predictions in this category yet.</div>`;
+    feed.innerHTML = potdHTML + (list.map((p,i)=>cardHTML(p,i)).join("") ||
+      `<div class="empty"><div class="big">🤷</div>No predictions in this category yet.</div>`);
     wireCards(feed);
   }
 
@@ -1246,7 +1357,7 @@ const UI = (() => {
       <div class="card-top">
         <span class="cat-tag" style="color:${cat.color}">${pred.category==="space"?"🚀 ":""}${cat.name}</span>
         <span class="points-tag">+${pred.pointValue}</span>
-        <span class="close-info ${cl.urgent?"urgent":cl.soon?"soon":""}">${cl.text}</span>
+        <span class="close-info ${cl.urgent?"urgent":cl.soon?"soon":""}"${resolved||closed?"":` data-close-ts="${Game.closeTime(pred)}"`}>${cl.text}</span>
       </div>
       <div class="q-text">${esc(pred.question)}</div>
       ${probBar}
@@ -1463,6 +1574,7 @@ const UI = (() => {
     const cardEl = btnEl.closest(".card");
     if(cardEl){ cardEl.classList.remove("locked-flash"); void cardEl.offsetWidth; cardEl.classList.add("locked-flash"); }
     try{ navigator.vibrate && navigator.vibrate(18); }catch(e){}
+    Sound.play("click");
     FX.toast(already? "Pick updated 🔁" : "Locked in! 🔒");
     // "made a call today" streak — reward showing up, separate from being right
     const cd = Game.recordCallDay(state);
@@ -1484,6 +1596,7 @@ const UI = (() => {
     }
     if(Game.confidenceLeft(state)<=0){ FX.toast(`No confidence stakes left this week (max ${Game.CONFIDENCE_PER_WEEK})`); return; }
     pick.confident = true; pick.at = Date.now(); // anchor the stake to this week
+    Sound.play("click");
     FX.toast(`⚡ Confidence staked · ±${pred.pointValue} pts`);
     commit();
     if(state._online) Account.pushPick(predId, prev);
@@ -1582,6 +1695,12 @@ const UI = (() => {
     const themeItems = [`<button class="pick-item ${state.activeTheme==="default"?"active":""}" data-theme="default"><span class="swatch" style="background:#8b5cf6"></span>Violet</button>`]
       .concat(ownedThemes.map(t=>`<button class="pick-item ${state.activeTheme===t.value?"active":""}" data-theme="${t.value}"><span class="swatch" style="background:${swatchOf[t.value]}"></span>${esc(t.name)}</button>`)).join("");
 
+    // dark mode is independent of the accent theme above — see [data-mode="dark"] CSS
+    const modeItems = [ {label:"🖥️ Auto", val:""}, {label:"☀️ Light", val:"false"}, {label:"🌙 Dark", val:"true"} ]
+      .map(m => `<button class="pick-item ${String(state.darkMode)===((m.val===""?"null":m.val))?"active":""}" data-mode="${m.val}">${m.label}</button>`).join("");
+    const soundItems = [ {label:"🔊 Sound on", val:"true"}, {label:"🔇 Muted", val:"false"} ]
+      .map(s => `<button class="pick-item ${String(state.soundOn!==false)===s.val?"active":""}" data-sound="${s.val}">${s.label}</button>`).join("");
+
     $("#profileBody").innerHTML = `
       <div class="profile-hero">
         <div class="uname">@ ${esc(uname)}</div>
@@ -1616,6 +1735,12 @@ const UI = (() => {
       <div class="section-h">🎨 Theme</div>
       <div class="pick-row" id="themeRow">${themeItems}</div>
 
+      <div class="section-h">🌙 Appearance</div>
+      <div class="pick-row" id="modeRow">${modeItems}</div>
+
+      <div class="section-h">🔈 Sound</div>
+      <div class="pick-row" id="soundRow">${soundItems}</div>
+
       <div class="section-h">🎖️ Badges (${ownedBadges.length}/${allBadges.length})</div>
       <div class="badge-grid">${badgeGrid}</div>
     `;
@@ -1626,6 +1751,12 @@ const UI = (() => {
     }));
     $("#titleRow").querySelectorAll("[data-title]").forEach(b=>b.addEventListener("click",()=>{ state.activeTitle=b.dataset.title||null; commit(); }));
     $("#themeRow").querySelectorAll("[data-theme]").forEach(b=>b.addEventListener("click",()=>{ state.activeTheme=b.dataset.theme; commit(); }));
+    $("#modeRow").querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{
+      state.darkMode = b.dataset.mode===""?null:(b.dataset.mode==="true"); commit();
+    }));
+    $("#soundRow").querySelectorAll("[data-sound]").forEach(b=>b.addEventListener("click",()=>{
+      state.soundOn = b.dataset.sound==="true"; commit(); if(state.soundOn) Sound.play("click");
+    }));
     const ssb = $("#shareStatsBtn");
     if(ssb) ssb.addEventListener("click", shareStats);
   }
@@ -1712,8 +1843,19 @@ const UI = (() => {
       `<div class="lb-note">⚠️ Offline preview — these rivals are <b>illustrative demo players</b>. The live board appears when the backend is reachable.</div>` + html;
   }
 
-  /* ---- theme + nav + master render ---- */
-  function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); }
+  /* ---- theme + dark mode + nav + master render ----
+     darkMode: null follows the OS preference, true/false is an explicit
+     override from Profile → Appearance. Independent of the accent theme
+     (see the [data-mode="dark"] CSS block) so any accent can go dark.        */
+  function resolvedDark(){
+    if(state.darkMode===true) return true;
+    if(state.darkMode===false) return false;
+    try{ return matchMedia("(prefers-color-scheme: dark)").matches; }catch(e){ return false; }
+  }
+  function applyTheme(theme){
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.setAttribute("data-mode", resolvedDark() ? "dark" : "light");
+  }
   function setView(view){
     currentView = view;
     document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
@@ -1761,12 +1903,12 @@ const UI = (() => {
         if(r.cBonus) parts.push(`+${r.cBonus} confidence`);
         if(r.beat){
           // contrarian win — the core thrill: gold flair + extra confetti
-          FX.celebrate({ klass:"contrarian", confettiAmount:260,
+          FX.celebrate({ klass:"contrarian", confettiAmount:260, sound:"bigwin",
             kicker:"Against the crowd", emoji:"🔥", headline:"YOU BEAT THE CROWD!",
             detail:`Only ${pickPct}% said “${pick.option}” — you saw it coming. +${r.beat} bonus points.`,
             points:r.net, breakdown:parts.join(" · ") });
         } else {
-          FX.celebrate({ kicker:"Prediction resolved", emoji:"🎯", headline:"YOU CALLED IT!",
+          FX.celebrate({ kicker:"Prediction resolved", emoji:"🎯", headline:"YOU CALLED IT!", sound:"win",
             detail:`You said “${pick.option}” — ${pickPct}% of the crowd agreed.`,
             points:r.net, breakdown:parts.join(" · ") });
         }
@@ -1774,7 +1916,7 @@ const UI = (() => {
         // gentle miss reveal — no harsh language, no fireworks
         const answer = state.resolutions[id] ? state.resolutions[id].answer : null;
         const together = favorite===pick.option && favorite!==answer;
-        FX.celebrate({ klass:"miss", withConfetti:false,
+        FX.celebrate({ klass:"miss", withConfetti:false, sound:"miss",
           kicker:"Resolved", emoji:"🌤️", headline:"Not this time",
           detail: together
             ? `You said “${pick.option}” — so did ${pickPct}% of the crowd. It landed on “${answer}”.`
@@ -1788,12 +1930,12 @@ const UI = (() => {
     const rankIdx = Game.rankIndex(derived.rank.name);
     if(rankIdx > Game.rankIndex(state.seenRank)){
       state.seenRank = derived.rank.name;
-      FX.celebrate({ kicker:"Rank up!", emoji:derived.rank.emoji, headline:derived.rank.name, detail:derived.rank.title });
+      FX.celebrate({ kicker:"Rank up!", emoji:derived.rank.emoji, headline:derived.rank.name, detail:derived.rank.title, sound:"bigwin" });
     }
     Game.unlockedRewards(derived).filter(id=>!state.seenUnlocks.includes(id)).forEach(id=>{
       state.seenUnlocks.push(id);
       const rw = DATA.REWARDS.find(r=>r.id===id);
-      FX.celebrate({ kicker:"Reward unlocked", emoji:rw.emoji, headline:rw.name,
+      FX.celebrate({ kicker:"Reward unlocked", emoji:rw.emoji, headline:rw.name, sound:"win",
         detail: rw.type==="theme"?"New theme available!":rw.type==="title"?"New title available!":"New badge earned!" });
     });
   }
@@ -1838,9 +1980,18 @@ const UI = (() => {
   return {
     init(){
       applyTheme(state.activeTheme||"default");
+      Sound.setEnabled(state.soundOn!==false);
+      // dark mode set to "Auto" tracks a live OS-level change (e.g. Night Shift
+      // kicking in), not just the value at page load.
+      try{
+        matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+          if(state.darkMode===null) applyTheme(state.activeTheme||"default");
+        });
+      }catch(e){}
       paintHeader();
       document.querySelectorAll("#nav button").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
       document.querySelectorAll(".subtab").forEach(t=>t.addEventListener("click",()=>{picksTab=t.dataset.subtab;renderPicks();}));
+      setInterval(tickCountdowns, 1000);
       setView("feed");
     },
     getState:()=>state, getDerived:()=>derived,
@@ -1927,7 +2078,7 @@ const Account = (() => {
       kicker: "Daily check-in", emoji: r.streak>=7 ? "💎" : r.streak>=3 ? "🔥" : "📅",
       headline: r.streak>1 ? `Day ${r.streak} streak!` : "Welcome back!",
       detail: r.broke ? "Back on the board — day 1 of your new streak." : "Come back tomorrow to keep it growing.",
-      points: r.bonusAwarded, withConfetti: r.streak>=3,
+      points: r.bonusAwarded, withConfetti: r.streak>=3, sound:"checkin",
     });
   }
 

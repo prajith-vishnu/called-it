@@ -20,7 +20,11 @@
 
 ## What it is
 
-Called It is a free prediction game inspired by prediction markets like **Polymarket** and **Kalshi** — but with **zero money involved**. Instead of betting cash, you predict the outcome of fun future events and earn **points and status** for being right. No wagering, no prizes, no payouts — the only reward is bragging rights and climbing the ranks.
+Called It is a prediction game I built for Hack Club. It's based on prediction markets like Polymarket, but it's designed to be free and accessible to everyone — no money involved, ever. You pick what you think will happen in the future, and you get points if you're right. Beating the crowd (picking the unpopular choice and winning anyway) gets you extra points.
+
+The part I struggled with most was getting the backend working and hooking up the Groq API — I learned a lot doing it. That API gets called a few times a day in the background to pull in new predictions and update old ones, so the feed stays fresh without anyone having to touch it.
+
+Try it here: **<https://prajith-vishnu.github.io/called-it/>**
 
 ## Built for Stardance 🌌
 
@@ -49,6 +53,10 @@ This project was built for **Stardance** (Hack Club's NASA-themed challenge). It
 - 📖 **Your prediction story** — profile shows your best category and, after 10 resolved calls, a locally-computed **prediction personality** (The Contrarian, Streak Hunter, Space Cadet…) — nothing leaves the device
 - 📣 **Visual share cards** — one tap draws a branded image card of your call (or your stats) on a canvas and shares it via the system share sheet, clipboard, or download; space calls get a starfield 🌌; never anything personal on the card
 - 🗓️ **Calling streaks & urgency** — a separate "made a call today" streak rewards showing up, and predictions closing within 24h pulse *⏳ Closes in Nh* at the top of the feed
+- ⏱️ **Live countdown timer** — cards inside their last 24h tick down for real (down to `mm:ss` in the final hour), not just on the next refresh
+- 🌟 **Prediction of the Day** — the single biggest, soonest-closing pick, pinned above the feed with its own gold spotlight
+- 🌙 **Dark mode** — an Auto/Light/Dark toggle in Profile, independent of the accent theme, so any theme color can go dark
+- 🔊 **Sound effects** — short synthesized tones (no audio files) for locking in a pick, wins, contrarian wins, and misses; mute anytime in Profile
 - 📲 **Installable PWA** — add it to your phone's home screen; the service worker keeps it fully playable offline from cache
 - ✅ **Tested + CI** — a zero-dependency `node:test` suite runs the *exact* scoring engine shipped in `index.html` (extracted and executed in a VM) on every push
 

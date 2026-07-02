@@ -26,9 +26,9 @@ The part I struggled with most was getting the backend working and hooking up th
 
 Try it here: **<https://prajith-vishnu.github.io/called-it/>**
 
-## Built for Stardance 🌌
+## Built for Hack Club 🌌
 
-This project was built for **Stardance** (Hack Club's NASA-themed challenge). It ships a dedicated **🚀 Space & NASA category** — Artemis II, Starship orbital tests, Moon landings, launch-count races, astronaut records — resolved exactly like every other question, and the AI generator is prompted to keep producing fresh space predictions on schedule. Calling the future of spaceflight *is* the game.
+This project was built for **Hack Club**, as part of a NASA-themed challenge. It ships a dedicated **🚀 Space & NASA category** — Artemis II, Starship orbital tests, Moon landings, launch-count races, astronaut records — resolved exactly like every other question, and the AI generator is prompted to keep producing fresh space predictions on schedule. Calling the future of spaceflight *is* the game.
 
 ## For judges — the 2-minute tour
 

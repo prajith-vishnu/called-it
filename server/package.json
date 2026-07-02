@@ -1,11 +1,11 @@
 {
   "name": "called-it-backend",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Zero-dependency backend for the Called It prediction game: holds the Groq key, runs a batched generate+resolve refresh per scheduled run (header-aware rate limiting), caches results, serves them read-only.",
+  "description": "Zero-dependency backend for the Called It prediction game: accounts (scrypt + httpOnly sessions), server-scored picks + cached leaderboard, daily streaks, and a scheduled, triple-rate-limited Groq refresh that only ever enriches a cache. No packages = nothing for npm audit to flag.",
   "type": "commonjs",
   "engines": {
-    "node": ">=18.17"
+    "node": ">=20.6"
   },
   "scripts": {
     "start": "node --env-file=.env server.js",

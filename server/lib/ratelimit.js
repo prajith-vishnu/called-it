@@ -25,6 +25,14 @@ const FILE = path.join(__dirname, "..", "data", "ratelimit.json");
 const SAFETY_MARGIN = 0.8;     // stop once 80% of the request budget is used
 const TOKEN_FLOOR = 2000;      // keep at least this many tokens in reserve
 
+/* HARD LOCAL CAP: independent of anything Groq reports, never make more than
+ * this many calls per UTC day. The counter lives in the same persisted file
+ * and resets when the date changes. Groq's free tier allows ~1k requests/day
+ * for the generation model; 40 keeps us at <5% of that even if the header
+ * guard below ever misreads. Belt AND suspenders. */
+const MAX_CALLS_PER_DAY = Math.max(1, Number(process.env.GROQ_MAX_CALLS_PER_DAY) || 40);
+const utcDay = () => new Date().toISOString().slice(0, 10);
+
 function read() { try { return JSON.parse(fs.readFileSync(FILE, "utf8")); } catch (e) { return {}; } }
 function write(o) {
   try {
@@ -53,7 +61,11 @@ function record(provider, headers) {
   const h = (k) => (headers && headers.get ? headers.get(k) : headers ? headers[k] : undefined);
   const now = Date.now();
   const o = read();
-  o[provider] = Object.assign(o[provider] || {}, {
+  // count this call against today's hard cap (resets when the UTC date changes)
+  const day = utcDay();
+  const prev = o[provider] || {};
+  const callsToday = prev.capDay === day ? (prev.callsToday || 0) + 1 : 1;
+  o[provider] = Object.assign(prev, { capDay: day, callsToday }, {
     limitReq: num(h("x-ratelimit-limit-requests")),
     limitTok: num(h("x-ratelimit-limit-tokens")),
     remainingReq: num(h("x-ratelimit-remaining-requests")),
@@ -79,6 +91,10 @@ function canProceed(provider, estTokens) {
   const now = Date.now();
   if (!o) return { ok: true };                                   // no data yet → allow
 
+  // ── HARD DAILY CAP (checked first; independent of provider headers) ──
+  if (o.capDay === utcDay() && (o.callsToday || 0) >= MAX_CALLS_PER_DAY) {
+    return { ok: false, reason: "daily-cap", waitMs: msUntilUtcMidnight() };
+  }
   if (o.backoffUntil && now < o.backoffUntil) {
     return { ok: false, reason: "429-backoff", waitMs: o.backoffUntil - now };
   }
@@ -95,4 +111,21 @@ function canProceed(provider, estTokens) {
   return { ok: true };
 }
 
-module.exports = { canProceed, record, note429, parseDur, SAFETY_MARGIN };
+function msUntilUtcMidnight() {
+  const now = new Date();
+  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  return next - now.getTime();
+}
+
+/* Non-secret snapshot for the health endpoint. */
+function status(provider) {
+  const o = read()[provider] || {};
+  return {
+    callsToday: o.capDay === utcDay() ? (o.callsToday || 0) : 0,
+    dailyCap: MAX_CALLS_PER_DAY,
+    inBackoff: !!(o.backoffUntil && Date.now() < o.backoffUntil),
+    remainingRequests: Number.isFinite(o.remainingReq) ? o.remainingReq : null,
+  };
+}
+
+module.exports = { canProceed, record, note429, parseDur, status, SAFETY_MARGIN, MAX_CALLS_PER_DAY };

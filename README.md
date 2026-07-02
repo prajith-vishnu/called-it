@@ -6,71 +6,104 @@
 
 ## What it is
 
-Called It is a free prediction game inspired by prediction markets like **Polymarket** and **Kalshi** — but with **zero money involved**. Instead of betting cash, you predict the outcome of fun future events and earn **points and status** for being right. It's built for a **13+ audience**: no wagering, no prizes, no payouts — the only reward is bragging rights and climbing the ranks.
+Called It is a free prediction game inspired by prediction markets like **Polymarket** and **Kalshi** — but with **zero money involved**. Instead of betting cash, you predict the outcome of fun future events and earn **points and status** for being right. No wagering, no prizes, no payouts — the only reward is bragging rights and climbing the ranks.
 
-## Built for Stardance
+## Built for Stardance 🌌
 
-This project was built for **Stardance** (NASA-themed challenge). The prediction engine is category-based and theme-friendly, so alongside music, movies, internet, and viral-trend questions it can feature **space & NASA prediction categories** — e.g. "Will a crewed launch happen before <date>?" — resolved the same way as any other question.
+This project was built for **Stardance** (Hack Club's NASA-themed challenge). It ships a dedicated **🚀 Space & NASA category** — Artemis II, Starship orbital tests, Moon landings, launch-count races, astronaut records — resolved exactly like every other question, and the AI generator is prompted to keep producing fresh space predictions on schedule. Calling the future of spaceflight *is* the game.
+
+## For judges — the 2-minute tour
+
+1. **Play it** (zero setup): open [`index.html`](index.html) or the live demo below — pick outcomes, build streaks, watch the confetti.
+2. **Run the full stack** (accounts + live leaderboard): `cd server && cp ../.env.example .env` (add a free [Groq key](https://console.groq.com/keys)) `&& npm start`, then visit `http://localhost:3000` and hit **Sign in**.
+3. **Prove the pipeline is alive**: `curl localhost:3000/api/health` — last AI run, last error, calls-today vs. the hard daily cap.
+4. **Prove the security posture**: `curl -i localhost:3000/server/.env` → 404 (allowlisted static serving); `npm audit` → 0 vulnerabilities (zero dependencies); passwords scrypt-hashed, sessions httpOnly, CSRF-guarded, everything rate-limited. Details in [server/README.md](server/README.md).
 
 ## Features
 
-- 🗳️ **Prediction feed** across many categories (music, movies/TV, internet & creators, awards, viral trends, "will it happen", and space/NASA)
-- 🎯 **Points** for correct calls, with each question worth a set value
-- 🔥 **Streaks** that build as you keep calling it right
+- 🗳️ **Prediction feed** across many categories (sports, 🚀 **space & NASA**, music, movies/TV, internet & creators, awards, viral trends, "will it happen")
+- 👤 **Optional accounts** — username + password only (**no email, no personal data**); or play as a guest entirely on-device
+- 🏆 **Live leaderboard** — scores are computed **on the server** from real picks, so nobody can cheat their way up; cached so it stays fast
+- 📅 **Daily check-in streaks** — come back every day for growing bonus points; miss a day and the streak gently resets
+- 🎯 **Points** for correct calls, 🔥 **call streaks** with stacking bonuses
 - 🧠 **Beat-the-crowd bonus** — correctly picking the *unpopular* option earns extra (rewarding independent thinking, like buying low in a real market)
-- ⚡ **Opt-in confidence stakes** — a limited number of high-conviction picks that win more but risk points if wrong (the only way to lose points; casual players never get punished)
-- 🏆 **Ranks** (Rookie → Caller → Forecaster → Oracle → Prophet → Legend) and a leaderboard
-- ✨ **Cosmetic rewards** — themes, titles, and badges unlocked purely by milestones (never bought, never for sale)
-- 📊 **Crowd-belief bars** showing how the community is leaning on each question
-- 🤖 **Daily AI-generated questions** refreshed automatically each day
+- ⚡ **Opt-in confidence stakes** — 3 per week; win more, or lose the stake (the only way to lose points; casual players never get punished)
+- ✨ **Ranks, themes, titles, and badges** unlocked purely by milestones — never bought, never for sale
+- 📊 **Real crowd-belief bars** — signed-in feeds show live tallies aggregated from everyone's actual picks
+- 🤖 **AI-refreshed questions several times a day**, safety-filtered, always served from cache — the AI being down never takes the game down
+- 🎉 **Confetti-grade celebrations** for wins, rank-ups, unlocks, and daily streaks
 
 ## How it works
 
 1. Browse open predictions and **tap an option** to lock in your call.
-2. When an event's outcome is known, the question resolves.
-3. **Correct calls earn points** (plus beat-the-crowd and streak bonuses); climb the ranks and unlock cosmetics.
+2. When an event's outcome is known, the question resolves — automatically for
+   clear-cut, well-sourced outcomes (AI web-search resolution, high-confidence
+   only), or manually by the maintainer for anything fuzzy. The AI is
+   instructed to answer "unresolved" rather than guess, so it can never
+   fabricate a result.
+3. **Correct calls earn points** (plus beat-the-crowd, streak, and confidence
+   bonuses); climb the ranks, unlock cosmetics, and defend your leaderboard
+   spot.
 
-Outcomes are **resolved manually** by the maintainer via a hidden dev panel — this keeps resolutions accurate and prevents the AI from ever fabricating a result. Questions the AI isn't confident about stay pending for human review.
+## Architecture
 
-## Tech
+```
+┌──────────────────────── index.html (no framework, no build) ───────────────────────┐
+│  DATA (content/config) · LOGIC (Store + pure Game engine) · UI (render + FX)       │
+│  + Net/Account layer: signs in, mirrors server state, pushes picks                 │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                       │ same-origin JSON API (httpOnly session cookie)
+┌──────────────────────▼───────────── server/ (zero dependencies) ────────────────────┐
+│  auth (scrypt + sessions) · game (server-side scoring, cached leaderboard, daily    │
+│  streaks) · db (atomic JSON store) · refresh pipeline (scheduled Groq calls,        │
+│  triple rate-guarded, safety-filtered, cache-only) · /api/health                    │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+```
 
-- **Front-end:** a single self-contained static file (`index.html` — HTML + CSS + JS, no framework, no build step), hosted on **GitHub Pages**.
-- **Daily predictions:** a **GitHub Actions cron job** calls the **Groq API** once a day to generate fresh, age-appropriate questions, safety-filters them, and commits the result as **`predictions.json`**, which the site reads.
-- **Game state:** everything (points, picks, streaks, cosmetics) is stored in the browser's **`localStorage`** — there is no database and no server holding user data.
+- **Guest mode needs no backend at all** — GitHub Pages + the Actions cron
+  committing `predictions.json` keeps the static experience alive forever.
+- **The full experience** (accounts, live leaderboard, real crowd bars, synced
+  streaks) comes from running `server/` on any Node host.
+- The client **Store contract** and server **db adapter** are both designed as
+  swap points: the front-end could move to a native app, and the JSON store to
+  Postgres, without touching game logic.
 
 ## Privacy & safety
 
-- **No accounts, no login, no personal data.** No email, names, phone, location, device IDs, analytics, or trackers.
-- **No user-generated text** anywhere — you only pick from preset options, and usernames are chosen from a preset list. Nothing to moderate, no chat, no user-to-user contact.
-- **13+ age gate** on first load (stores only a yes/no flag — no date of birth).
-- **All game data stays on your own device** in localStorage; clearing your browser resets it.
+- **Guest mode:** nothing personal collected, everything stays in your browser's localStorage.
+- **Accounts:** exactly a username (content-filtered), a **scrypt-hashed** password, and your picks. **No email**, no analytics, no trackers. See [PRIVACY.md](PRIVACY.md).
+- **No user-generated text** visible to others except filtered usernames — no chat, no messaging, nothing to moderate.
+- **Family-friendly content, enforced twice:** the AI is prompted for all-ages content *and* every generated question passes a strict server-side safety filter (mirrored client-side) before anyone sees it. Failures are discarded.
 
-## Security notes
+## Security highlights
 
-- The **Groq API key is stored only in GitHub Actions Secrets** and read server-side via an environment variable — it never appears in the front-end, in any committed file, or in any response.
-- **AI output is treated as untrusted:** every generated prediction is validated against a strict schema and run through a **13+ content safety filter** (no sexual, violent, hateful, or unsafe content; no targeting of real private individuals; must be specific and time-bound) **before** it can ever be displayed. Failures are discarded and the app falls back to the last good set.
-- A strict **Content-Security-Policy**, output escaping (no raw-HTML injection), and HTTPS-only hosting round out the defenses.
+- **Secrets:** the Groq key + admin token live only in env / GitHub Actions Secrets — never in code, responses, logs, or git history (verified).
+- **Passwords** hashed with scrypt (memory-hard, OWASP-recommended); **sessions** are random 256-bit tokens stored only as hashes, in httpOnly `SameSite=Strict` (Secure in prod) cookies.
+- **CSRF protection** (same-site cookies + Origin/Sec-Fetch-Site checks), **rate limiting** on every endpoint plus sliding-window brute-force limits on login/register, **16 KB body cap**, strict **CSP** and security headers, **allowlisted static serving** (secret files are unreachable by construction).
+- **The AI can never hurt the app:** calls run only from the scheduled server-side job, capped at 40/day locally *and* budget-guarded by Groq's own headers *and* spaced by a min interval — with exponential-backoff retries and a cache that keeps serving through any failure. `GET /api/health` proves the pipeline is alive.
+- **Zero npm dependencies** → `npm audit`: 0 vulnerabilities, by construction.
 
 ## Run locally
 
-The game is fully playable with no setup:
+Static demo (guest mode) with no setup:
 
 ```bash
-# Option A — just open the file
-open index.html      # (or double-click it in your file browser)
+open index.html        # or double-click it
 ```
 
-To also run the daily-predictions backend locally (optional):
+Full experience (accounts + live leaderboard + AI refresh):
 
 ```bash
 cd server
-cp ../.env.example .env          # then edit .env and add your Groq API key:
-#   GROQ_API_KEY=gsk_your_key_here     (never commit this file — it's git-ignored)
-npm start                        # serves the app + predictions on http://localhost:3000
-node --env-file=.env scripts/refresh-cli.js --force   # generate predictions once
+cp ../.env.example .env    # then edit .env:
+#   GROQ_API_KEY=...            from https://console.groq.com/keys (free)
+#   ADMIN_REFRESH_TOKEN=...     any long random string
+npm start                  # http://localhost:3000 — game, API, and scheduler
 ```
 
-Get a free Groq API key at <https://console.groq.com/keys>. The key lives **only** in your local `.env` (git-ignored) or in GitHub Actions Secrets — never in code.
+Check the pipeline: `curl localhost:3000/api/health`. Requires Node ≥ 20.6.
+For production, set `NODE_ENV=production` (Secure cookies + HSTS) and run under
+pm2/systemd so crashes self-heal. Full backend docs: [server/README.md](server/README.md).
 
 ## Live demo
 

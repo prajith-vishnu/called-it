@@ -10,6 +10,11 @@ server/data/cache.json
 server/data/cache.json.tmp
 server/data/ratelimit.json
 
+# user database: holds password hashes + session-token hashes. NEVER commit.
+server/data/db.json
+server/data/db.json.tmp
+server/data/db.json.corrupt-*
+
 # deps / runtime
 node_modules/
 npm-debug.log*

@@ -220,6 +220,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .lb-name{font-weight:700;font-size:14.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .lb-name .tag{font-size:10px;color:var(--muted);font-weight:700;margin-left:6px;}
 .lb-pts{font-weight:800;color:var(--gold);font-size:14.5px;font-variant-numeric:tabular-nums;}
+.lb-sub{font-size:11px;color:var(--muted);font-weight:600;margin-top:1px;}
+.lb-hot{font-size:11px;font-weight:800;color:var(--accent);margin-left:6px;white-space:nowrap;}
+
+/* ACCOUNT PILL (header) */
+.acct-pill{color:var(--accent);font-size:12.5px;max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:transform .12s;}
+.acct-pill.signed-in{color:var(--good);}
+.acct-pill:active{transform:scale(.95);}
 
 /* BOTTOM NAV */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:50;max-width:520px;margin:0 auto;display:flex;padding:8px 4px calc(8px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--bg-0) 92%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--stroke);}
@@ -314,6 +321,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
     <div class="header-spacer"></div>
     <div class="stat-pill streak-pill" id="hdrStreakPill"><span class="flame">🔥</span><span id="hdrStreak">0</span></div>
     <div class="stat-pill"><span id="hdrPoints">0</span><span class="label">pts</span></div>
+    <button class="stat-pill acct-pill" id="acctBtn" aria-label="Account">Sign in</button>
   </header>
 
   <!-- VIEW: FEED -->
@@ -358,8 +366,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   </section>
 
   <!-- hidden dev-panel trigger: tap 5x (also Ctrl/Cmd+Shift+D) -->
-  <div class="dev-trigger"><a href="#" id="footerPrivacy" style="color:inherit;text-decoration:underline">Privacy &amp; Terms</a> · no account · no personal data</div>
-  <div class="dev-trigger" id="devTrigger">CALLED IT · v1.0 · local-only prototype</div>
+  <div class="dev-trigger"><a href="#" id="footerPrivacy" style="color:inherit;text-decoration:underline">Privacy &amp; Terms</a> · optional accounts · no email needed</div>
+  <div class="dev-trigger" id="devTrigger">CALLED IT · v2.0</div>
 </div>
 
 <nav class="nav" id="nav">
@@ -391,17 +399,51 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   </div>
 </div>
 
-<!-- PRIVACY / TERMS MODAL (accurate for the localStorage-only, no-account app) -->
+<!-- AUTH MODAL — optional accounts: username + password only, NO email.
+     Passwords go over HTTPS to the same-origin backend, are scrypt-hashed at
+     rest, and the session lives in an httpOnly cookie JS can never read. -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <button class="auth-x" id="authClose">✕</button>
+    <div class="auth-logo">Called It</div>
+    <div id="authForms">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-authtab="login" type="button">Sign in</button>
+        <button class="auth-tab" data-authtab="register" type="button">Create account</button>
+      </div>
+      <p class="auth-sub" id="authSub">Welcome back — your picks count on the live leaderboard.</p>
+      <form id="authForm" autocomplete="on">
+        <label class="auth-label" for="authUser">Username</label>
+        <input class="auth-input" id="authUser" name="username" maxlength="20" autocomplete="username"
+               placeholder="letters, numbers, _" spellcheck="false" autocapitalize="off" required />
+        <label class="auth-label" for="authPass">Password</label>
+        <input class="auth-input" id="authPass" name="password" type="password" maxlength="128"
+               autocomplete="current-password" placeholder="8+ characters" required />
+        <div class="auth-msg" id="authMsg"></div>
+        <button class="auth-submit" id="authSubmit" type="submit">Sign in</button>
+      </form>
+      <p class="auth-fine">No email, no personal info — just pick a username. Guest progress stays on this device.</p>
+    </div>
+    <div id="authAccount" style="display:none">
+      <p class="auth-sub" id="acctInfo"></p>
+      <button class="auth-danger" id="acctLogout" type="button">Sign out</button>
+      <p class="auth-fine">Signing out returns you to this device's guest progress.</p>
+    </div>
+  </div>
+</div>
+
+<!-- PRIVACY / TERMS MODAL -->
 <div class="auth-overlay" id="privacyOverlay">
   <div class="auth-card">
     <button class="auth-x" id="privacyClose">✕</button>
     <h3 style="margin:4px 0 10px">Privacy &amp; Terms</h3>
     <div class="privacy-body">
       <p><b>Free & for everyone.</b> Called It is a for-fun prediction game. Points, ranks, and cosmetics are status only — no money, nothing for sale, nothing redeemable.</p>
-      <p><b>No personal data is collected.</b> There are no accounts, no login, no email, no names, no location, no device IDs, no analytics, and no third-party trackers.</p>
-      <p><b>Your progress stays on your device.</b> Your picks, points, streak, and cosmetics are saved only in this browser's localStorage. Clearing your browser data resets the game.</p>
-      <p><b>No user-to-user contact.</b> You only choose from preset options — there is no chat, no messaging, and no free-text input to moderate. The leaderboard rivals are illustrative demo players.</p>
-      <p>Daily predictions are generated on a server that holds no user data; the app only reads a shared list of predictions.</p>
+      <p><b>Accounts are optional and minimal.</b> Playing as a guest stores everything in this browser only. If you create an account, we store exactly: a username you choose, a securely hashed password (never the password itself), and your picks. No email, no name, no location, no analytics, no third-party trackers.</p>
+      <p><b>Guest progress stays on your device.</b> Guest picks, points, streaks, and cosmetics live in this browser's localStorage. Clearing browser data resets guest progress.</p>
+      <p><b>The leaderboard shows</b> only your username, score, and streaks. Don't put personal information in your username.</p>
+      <p><b>No user-to-user contact.</b> There is no chat, no messaging, and no free-text visible to other players besides usernames, which are filtered.</p>
+      <p>Daily predictions are AI-generated on a schedule and safety-filtered before anyone sees them; the app only ever reads a cached list.</p>
     </div>
   </div>
 </div>
@@ -419,6 +461,7 @@ const DATA = (() => {
 
   const CATEGORIES = {
     sports:   { name:"Sports",              emoji:"⚽", color:"#0ea5e9" },
+    space:    { name:"Space & NASA",        emoji:"🚀", color:"#7c3aed" },
     music:    { name:"Music",               emoji:"🎵", color:"#f472b6" },
     movies:   { name:"Movies & TV",         emoji:"🎬", color:"#60a5fa" },
     internet: { name:"Internet & Creators", emoji:"🌐", color:"#34d399" },
@@ -460,6 +503,10 @@ const DATA = (() => {
     { id:"bg_star",     type:"badge", name:"Star Caller", emoji:"🌟", value:"🌟", unlock:{kind:"points",value:800}, desc:"Reach 800 points." },
     { id:"bg_crown",    type:"badge", name:"Crowned",     emoji:"👑", value:"👑", unlock:{kind:"points",value:1500},desc:"Reach 1,500 points." },
     { id:"bg_brain",    type:"badge", name:"Big Brain",   emoji:"🧠", value:"🧠", unlock:{kind:"correct",value:25}, desc:"25 correct calls." },
+    // daily check-in streaks (the come-back-tomorrow loop)
+    { id:"bg_daily3",   type:"badge", name:"Three-Peat",  emoji:"📅", value:"📅", unlock:{kind:"daily",value:3},  desc:"Check in 3 days in a row." },
+    { id:"bg_daily7",   type:"badge", name:"Week Warrior",emoji:"🌞", value:"🌞", unlock:{kind:"daily",value:7},  desc:"7-day check-in streak." },
+    { id:"bg_daily30",  type:"badge", name:"True Devotion",emoji:"💎", value:"💎", unlock:{kind:"daily",value:30}, desc:"30-day check-in streak." },
   ];
 
   // Preset usernames (NO free text → nothing to moderate). A future moderated
@@ -497,10 +544,6 @@ const DATA = (() => {
                    future crowd vote)
   ---------------------------------------------------------------------------- */
   const PREDICTIONS = [
-    // ── TEST CARD (closes tomorrow) — remove this one line when you're done testing.
-    //    noShift:true keeps its literal date; closeDate is computed as tomorrow at load.
-    { id:"test-tomorrow", category:"general", question:"[TEST] This card closes tomorrow — pick an option, then resolve it in the dev panel to see the points loop.", options:["Yes","No"], crowd:[6,4], closeDate:(()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})(), pointValue:25, resolution:"pending", noShift:true },
-
     // ── MARQUEE / "everyone knows this" (real dates, family-friendly). These use
     //    noShift:true so they show their true close dates. The daily AI job keeps
     //    adding more like these. Edit freely.
@@ -512,6 +555,14 @@ const DATA = (() => {
     { id:"summer_song",category:"music",   question:"Who will have the #1 song on the Billboard Hot 100 this summer?", options:["Taylor Swift","Sabrina Carpenter","Drake","Someone else"], crowd:[160,130,90,120], closeDate:"2026-09-01", pointValue:40, resolution:"pending", noShift:true },
     { id:"movie_1b",   category:"movies",  question:"Will a movie released in 2026 gross over $1 billion worldwide?", options:["Yes","No"], crowd:[230,80], closeDate:"2026-12-31", pointValue:20, resolution:"pending", noShift:true },
     { id:"new_iphone", category:"general", question:"Will Apple announce a new iPhone in 2026?", options:["Yes","No"], crowd:[250,35], closeDate:"2026-12-31", pointValue:15, resolution:"pending", noShift:true },
+
+    // ── Space & NASA (Stardance 🌌) — real dates, objectively resolvable ──
+    { id:"sp1", category:"space", question:"Will NASA's Artemis II crewed Moon mission launch in 2026?", options:["Yes","No"], crowd:[150,120], closeDate:"2026-12-31", pointValue:35, resolution:"pending", noShift:true },
+    { id:"sp2", category:"space", question:"Will a Starship test flight complete a full orbit of Earth in 2026?", options:["Yes","No"], crowd:[190,90], closeDate:"2026-12-31", pointValue:25, resolution:"pending", noShift:true },
+    { id:"sp3", category:"space", question:"Which company launches the most orbital rockets in 2026?", options:["SpaceX","Rocket Lab","ULA","Another company"], crowd:[240,60,40,50], closeDate:"2026-12-31", pointValue:30, resolution:"pending", noShift:true },
+    { id:"sp4", category:"space", question:"Will a spacecraft from a new country soft-land on the Moon by Dec 31, 2026?", options:["Yes","No"], crowd:[110,150], closeDate:"2026-12-31", pointValue:35, resolution:"pending", noShift:true },
+    { id:"sp5", category:"space", question:"Will the record for most people in space at the same time be broken in 2026?", options:["Yes","No"], crowd:[90,160], closeDate:"2026-12-31", pointValue:40, resolution:"pending", noShift:true },
+    { id:"sp6", category:"space", question:"Will a private company announce a 2027 launch date for a space station module before Dec 31, 2026?", options:["Yes","No"], crowd:[140,110], closeDate:"2026-12-31", pointValue:30, resolution:"pending", noShift:true },
 
     // ── Music ──
     { id:"m1", category:"music", question:"Will a solo female artist hold the #1 spot on the global singles chart on Aug 31, 2026?", options:["Yes","No"], crowd:[210,90], closeDate:"2026-08-31", pointValue:20, resolution:"pending" },
@@ -603,10 +654,12 @@ const DATA = (() => {
      seenRank     string                              highest rank celebrated
 ----------------------------------------------------------------------------- */
 const Store = (() => {
-  const KEY = "calledit.v1.state";
+  const KEY = "calledit.v1.state";          // guest (this-device) progress
+  const ONLINE_KEY = "calledit.v1.online";  // local mirror of the signed-in view (cosmetics + seen-celebrations)
   function defaultState(){
     return { username:null, picks:{}, resolutions:{}, activeTheme:"default",
-             activeTitle:null, celebrated:[], seenUnlocks:[], seenRank:"Rookie" };
+             activeTitle:null, celebrated:[], seenUnlocks:[], seenRank:"Rookie",
+             daily:{ streak:0, best:0, lastDay:null }, bonusPoints:0 };
   }
   function load(){
     try{
@@ -615,12 +668,19 @@ const Store = (() => {
       return Object.assign(defaultState(), JSON.parse(raw));
     }catch(e){ console.warn("Could not read save; starting fresh.", e); return defaultState(); }
   }
+  /* Signed-in state saves under its own key so it NEVER clobbers guest progress. */
   function save(state){
-    try{ localStorage.setItem(KEY, JSON.stringify(state)); }
+    try{ localStorage.setItem(state._online ? ONLINE_KEY : KEY, JSON.stringify(state)); }
     catch(e){ console.warn("Could not persist save.", e); }
   }
+  function loadOnlineMirror(){
+    try{
+      const raw = localStorage.getItem(ONLINE_KEY);
+      return raw ? Object.assign(defaultState(), JSON.parse(raw)) : defaultState();
+    }catch(e){ return defaultState(); }
+  }
   function reset(){ try{ localStorage.removeItem(KEY); }catch(e){} return defaultState(); }
-  return { load, save, reset, defaultState };
+  return { load, save, reset, defaultState, loadOnlineMirror };
 })();
 
 /* ---- Game: pure logic. No DOM, no storage. Functions over (state, DATA). --- */
@@ -652,15 +712,22 @@ const Game = (() => {
   function isResolved(state, id){ return !!state.resolutions[id]; }
   function daysUntilClose(pred){ return Math.ceil((closeTime(pred) - Date.now())/DAY); }
 
-  /* Effective crowd tallies = seeded base + the user's own pick (the live
-     "as people pick" nudge in a single-player local prototype). Returns counts,
-     total, and per-option fractions (parallel to pred.options).                */
+  /* Effective crowd tallies. Two sources:
+       • liveCrowd (signed-in feed): REAL aggregated picks from the server —
+         they already include this user's pick, so nothing is added here.
+       • local/demo cards: seeded base + the user's own pick (the "as people
+         pick" nudge for the offline prototype).
+     Returns counts, total, and per-option fractions (parallel to options).    */
   function effectiveCrowd(state, pred){
-    const counts = pred.crowd.slice();
-    const pick = state.picks[pred.id];
-    if(pick){ const i = pred.options.indexOf(pick.option); if(i>=0) counts[i]+=1; }
-    const total = counts.reduce((a,b)=>a+b,0) || 1;
-    return { counts, total, pct: counts.map(c=>c/total) };
+    const counts = (pred.crowd || pred.options.map(()=>0)).slice();
+    if(!pred.liveCrowd){
+      const pick = state.picks[pred.id];
+      if(pick){ const i = pred.options.indexOf(pick.option); if(i>=0) counts[i]+=1; }
+    }
+    const total = counts.reduce((a,b)=>a+b,0);
+    // no picks yet → show an even split instead of a dead 0% bar
+    const pct = total ? counts.map(c=>c/total) : counts.map(()=>1/counts.length);
+    return { counts, total, pct };
   }
 
   /* Streak bonus: small at 3, larger at 5, biggest at 10+. Awarded per correct
@@ -741,12 +808,36 @@ const Game = (() => {
 
     const totalResolved = events.length;
     const accuracy = totalResolved ? Math.round(correct/totalResolved*100) : 0;
+    // daily check-in bonus: stored (not derived) because it isn't replayable
+    // from picks×resolutions; it only ever grows, so peaks stay monotonic.
+    const bonus = state.bonusPoints || 0;
+    points += bonus; peakPoints += bonus;
     return {
       points, peakPoints, streak, peakStreak, correct, beatWins,
-      totalResolved, accuracy, per,
+      totalResolved, accuracy, per, bonusPoints: bonus,
+      dailyStreak: (state.daily && state.daily.streak) || 0,
+      peakDaily:   (state.daily && state.daily.best)   || 0,
       rank: rankFor(points), nextRank: nextRankFor(points),
       confidenceLeft: confidenceLeft(state),
     };
+  }
+
+  /* Daily check-in (guest/local mode) — the exact formula the server uses for
+     accounts: day 1 → 10 pts, +5 per consecutive day, capped at 40. Mutates
+     state; returns what happened so the UI can celebrate (or mourn a break). */
+  function dailyCheckin(state){
+    const today = new Date().toISOString().slice(0,10);
+    const daily = state.daily || (state.daily = { streak:0, best:0, lastDay:null });
+    if(daily.lastDay === today) return { alreadyCheckedIn:true, streak:daily.streak, bonusAwarded:0, broke:false };
+    const yesterday = new Date(Date.now()-DAY).toISOString().slice(0,10);
+    const broke = daily.lastDay !== null && daily.lastDay !== yesterday && daily.streak > 0;
+    const lostStreak = broke ? daily.streak : 0;
+    daily.streak = daily.lastDay === yesterday ? daily.streak+1 : 1;
+    daily.best = Math.max(daily.best, daily.streak);
+    daily.lastDay = today;
+    const bonusAwarded = Math.min(10 + (daily.streak-1)*5, 40);
+    state.bonusPoints = (state.bonusPoints||0) + bonusAwarded;
+    return { alreadyCheckedIn:false, streak:daily.streak, best:daily.best, bonusAwarded, broke, lostStreak };
   }
 
   function rankFor(points){ let r=DATA.RANKS[0]; for(const x of DATA.RANKS) if(points>=x.min) r=x; return r; }
@@ -760,6 +851,7 @@ const Game = (() => {
       if(r.unlock.kind==="points")  return d.peakPoints>=r.unlock.value;
       if(r.unlock.kind==="streak")  return d.peakStreak>=r.unlock.value;
       if(r.unlock.kind==="correct") return d.correct   >=r.unlock.value;
+      if(r.unlock.kind==="daily")   return d.peakDaily >=r.unlock.value;
       return false;
     }).map(r=>r.id);
   }
@@ -768,13 +860,14 @@ const Game = (() => {
     if(u.kind==="points")  return `Reach ${u.value} pts (${Math.min(d.peakPoints,u.value)}/${u.value})`;
     if(u.kind==="streak")  return `Hit a ${u.value} streak (best ${d.peakStreak})`;
     if(u.kind==="correct") return `${u.value} correct calls (${Math.min(d.correct,u.value)}/${u.value})`;
+    if(u.kind==="daily")   return `${u.value}-day check-in streak (best ${d.peakDaily})`;
     return "";
   }
 
   return {
     CONFIDENCE_PER_WEEK, EVERGREEN_DEMO,
     closeTime, isClosed, isResolved, daysUntilClose, effectiveCrowd,
-    streakBonus, beatBonus, isoWeekKey, confidenceLeft,
+    streakBonus, beatBonus, isoWeekKey, confidenceLeft, dailyCheckin,
     computeDerived, rankFor, rankIndex, nextRankFor, rankProgress,
     unlockedRewards, unlockProgressText,
   };
@@ -918,6 +1011,11 @@ const UI = (() => {
     $("#hdrPoints").textContent = derived.points;
     $("#hdrStreak").textContent = derived.streak;
     $("#hdrStreakPill").classList.toggle("hot", derived.streak>=2);
+    const ab = $("#acctBtn");
+    if(ab){
+      ab.textContent = state._online && state.username ? "@"+state.username : "Sign in";
+      ab.classList.toggle("signed-in", !!state._online);
+    }
   }
 
   /* ---- FEED ---- */
@@ -1040,19 +1138,30 @@ const UI = (() => {
       btn.addEventListener("click",()=>toggleConfidence(btn.dataset.conf)));
   }
 
-  /* ---- core interaction: LOCK IN ---- */
+  /* ---- core interaction: LOCK IN ----
+     Signed in: optimistic local update, then the pick is pushed to the server
+     (the only thing that counts for the leaderboard). If the server rejects it
+     (closed / already resolved / offline) the local state rolls back.         */
   function lockIn(predId, option, btnEl){
     const pred = DATA.byId[predId];
     if(!pred || Game.isResolved(state,predId) || Game.isClosed(pred)) return;
     const existing = state.picks[predId];
     const already = existing && existing.option===option;
+    const prev = existing ? Object.assign({}, existing) : null;
     state.picks[predId] = { option, confident: existing? existing.confident : false, at: existing? existing.at : Date.now() };
+
+    // live-crowd cards: nudge the real tallies locally so the bar responds now
+    if(pred.liveCrowd && pred.crowd){
+      if(prev){ const i0=pred.options.indexOf(prev.option); if(i0>=0) pred.crowd[i0]=Math.max(0,pred.crowd[i0]-1); }
+      const i1=pred.options.indexOf(option); if(i1>=0 && !already) pred.crowd[i1]+=1;
+    }
 
     const cardEl = btnEl.closest(".card");
     if(cardEl){ cardEl.classList.remove("locked-flash"); void cardEl.offsetWidth; cardEl.classList.add("locked-flash"); }
     try{ navigator.vibrate && navigator.vibrate(18); }catch(e){}
     FX.toast(already? "Pick updated 🔁" : "Locked in! 🔒");
     commit();
+    if(state._online) Account.pushPick(predId, prev);
   }
 
   /* ---- opt-in CONFIDENCE STAKE ---- */
@@ -1060,18 +1169,25 @@ const UI = (() => {
     const pred = DATA.byId[predId];
     const pick = state.picks[predId];
     if(!pick){ FX.toast("Lock a pick first, then stake ⚡"); return; }
-    if(pick.confident){ pick.confident=false; FX.toast("Stake removed"); commit(); return; }
+    const prev = Object.assign({}, pick);
+    if(pick.confident){
+      pick.confident=false; FX.toast("Stake removed"); commit();
+      if(state._online) Account.pushPick(predId, prev);
+      return;
+    }
     if(Game.confidenceLeft(state)<=0){ FX.toast(`No confidence stakes left this week (max ${Game.CONFIDENCE_PER_WEEK})`); return; }
     pick.confident = true; pick.at = Date.now(); // anchor the stake to this week
     FX.toast(`⚡ Confidence staked · ±${pred.pointValue} pts`);
     commit();
+    if(state._online) Account.pushPick(predId, prev);
   }
 
   /* ---- MY PREDICTIONS ---- */
   function renderPicks(){
     $("#streakBanner").innerHTML = `<div class="streak-banner">
       <div class="flame" style="font-size:34px">🔥</div>
-      <div><div class="num">${derived.streak}</div><div class="lab">current streak</div></div>
+      <div><div class="num">${derived.streak}</div><div class="lab">call streak</div></div>
+      <div><div class="num" style="color:var(--gold)">${derived.dailyStreak}</div><div class="lab">day streak 📅</div></div>
       <div class="best">🏅 best ${derived.peakStreak}<br>🎯 ${derived.accuracy}% accuracy</div>
     </div>`;
 
@@ -1135,14 +1251,17 @@ const UI = (() => {
       <div class="stat-grid">
         <div class="stat-box"><div class="num gold">${d.points}</div><div class="cap">Total points</div></div>
         <div class="stat-box"><div class="num accent">${d.accuracy}%</div><div class="cap">Accuracy (${d.correct}/${d.totalResolved})</div></div>
-        <div class="stat-box"><div class="num">🔥 ${d.streak}</div><div class="cap">Current streak</div></div>
-        <div class="stat-box"><div class="num good">🏅 ${d.peakStreak}</div><div class="cap">Best streak</div></div>
+        <div class="stat-box"><div class="num">🔥 ${d.streak}</div><div class="cap">Call streak</div></div>
+        <div class="stat-box"><div class="num gold">📅 ${d.dailyStreak}</div><div class="cap">Day streak (best ${d.peakDaily})</div></div>
         <div class="stat-box"><div class="num">${Object.keys(state.picks).length}</div><div class="cap">Calls made</div></div>
         <div class="stat-box"><div class="num accent">⚔️ ${d.beatWins}</div><div class="cap">Beat-the-crowd wins</div></div>
       </div>
+      ${state._online
+        ? `<div class="lb-note">✅ Signed in as <b>@${esc(state.username||"")}</b> — your picks are scored on the server and count on the live leaderboard.</div>`
+        : `<div class="lb-note">👤 Playing as a guest on this device. <b>Sign in</b> (top right) to save progress and join the live leaderboard.</div>`}
 
-      <div class="section-h">🙂 Username (optional, local)</div>
-      <div class="pick-row" id="unameRow">${unameItems}</div>
+      ${state._online ? "" : `<div class="section-h">🙂 Display name (guest, local)</div>
+      <div class="pick-row" id="unameRow">${unameItems}</div>`}
 
       <div class="section-h">🏷️ Title</div>
       <div class="pick-row" id="titleRow">${titleItems}</div>
@@ -1154,7 +1273,8 @@ const UI = (() => {
       <div class="badge-grid">${badgeGrid}</div>
     `;
 
-    $("#unameRow").querySelectorAll("[data-uname]").forEach(b=>b.addEventListener("click",()=>{
+    const unameRow = $("#unameRow");
+    if(unameRow) unameRow.querySelectorAll("[data-uname]").forEach(b=>b.addEventListener("click",()=>{
       state.username = (state.username===b.dataset.uname) ? null : b.dataset.uname; commit();
     }));
     $("#titleRow").querySelectorAll("[data-title]").forEach(b=>b.addEventListener("click",()=>{ state.activeTitle=b.dataset.title||null; commit(); }));
@@ -1181,8 +1301,54 @@ const UI = (() => {
       `<div class="lb-note">Rewards unlock automatically when you hit a milestone. They're cosmetic only — you never spend points and nothing is for sale.</div>` + rows;
   }
 
-  /* ---- LEADERBOARD (local-only: your score is real; rivals are labeled demo data) ---- */
+  /* ---- LEADERBOARD ----
+     LIVE: computed + cached on the server from real accounts (rank, username,
+     score, hot-streak flair). The client can't fake it — it only ever sends
+     picks. Falls back to the labeled demo board when the backend is
+     unreachable (static/GitHub-Pages mode), so the view never breaks.        */
+  let lastBoard = null;   // last successful server payload (survives tab switches)
+  const AVATARS = ["🦊","🐸","🦉","🐙","🦄","🐝","🐬","🦁","🐨","🦜","🐢","🦋","🐳","🦖","🐹","🦩"];
+  const avatarOf = n => { let h=0; for(const c of String(n)) h=(h*31 + c.charCodeAt(0))>>>0; return AVATARS[h%AVATARS.length]; };
+
+  function boardRow(e, isYou){
+    const medal = e.rank===1?"🥇":e.rank===2?"🥈":e.rank===3?"🥉":e.rank;
+    const hot = e.streak>=3 ? `<span class="lb-hot">🔥${e.streak}</span>`
+              : e.dailyStreak>=3 ? `<span class="lb-hot">📅${e.dailyStreak}</span>` : "";
+    return `<div class="lb-row ${isYou?"you":""}">
+      <div class="lb-rank">${medal}</div>
+      <div class="lb-av">${avatarOf(e.username)}</div>
+      <div class="lb-name">${esc(e.username)}${isYou?'<span class="tag">YOU</span>':""}${hot}
+        <div class="lb-sub">${e.accuracy}% accuracy · ${e.correct} correct</div></div>
+      <div class="lb-pts">${e.score}</div>
+    </div>`;
+  }
+
   function renderBoard(){
+    const body = $("#boardBody");
+    if(lastBoard){ paintLiveBoard(lastBoard); }
+    else body.innerHTML = `<div class="empty"><div class="big">🏆</div>Loading the live board…</div>`;
+
+    Net.api("/api/leaderboard").then(data=>{
+      lastBoard = data;
+      if(currentView==="board") paintLiveBoard(data);
+    }).catch(()=>{
+      if(lastBoard || currentView!=="board") return;
+      paintDemoBoard();     // offline / static hosting → labeled demo data
+    });
+  }
+  function paintLiveBoard(data){
+    const meName = state._online ? state.username : null;
+    const entries = data.entries||[];
+    const note = state._online
+      ? `<div class="lb-note">🏆 Live board · ${data.players||entries.length} player${(data.players||entries.length)===1?"":"s"} · scores are computed on the server from real picks.</div>`
+      : `<div class="lb-note">🏆 This is the <b>live</b> leaderboard. Sign in (top right) to claim a spot on it.</div>`;
+    let html = entries.map(e=>boardRow(e, e.username===meName)).join("");
+    if(!entries.length) html = `<div class="empty"><div class="big">🌱</div>No players yet — be the first on the board!</div>`;
+    // signed in but outside the top list → pin your own row underneath
+    if(data.you && !entries.some(e=>e.username===meName)) html += boardRow(data.you, true);
+    $("#boardBody").innerHTML = note + html;
+  }
+  function paintDemoBoard(){
     const me = { name: state.username || "You", avatar:"😎", points: derived.points, isUser:true };
     const rows = DATA.DEMO_LEADERBOARD.map(e=>Object.assign({isUser:false}, e)).concat([me])
       .sort((a,b)=> b.points-a.points || (a.isUser?-1:1));
@@ -1194,7 +1360,7 @@ const UI = (() => {
         <div class="lb-pts">${r.points}</div>
       </div>`).join("");
     $("#boardBody").innerHTML =
-      `<div class="lb-note">⚠️ These rivals are <b>illustrative demo players</b> with fixed scores. Sign in to compete on the live leaderboard.</div>` + html;
+      `<div class="lb-note">⚠️ Offline preview — these rivals are <b>illustrative demo players</b>. The live board appears when the backend is reachable.</div>` + html;
   }
 
   /* ---- theme + nav + master render ---- */
@@ -1215,43 +1381,76 @@ const UI = (() => {
     else if(currentView==="board") renderBoard();
   }
 
-  /* ---- RESOLUTION action (called by the dev panel) ----
-     Marks an outcome, recomputes, then celebrates new correct calls, rank-ups,
-     and reward unlocks. answer===null undoes a resolution.                      */
-  function resolvePrediction(predId, answer, method){
-    const pred = DATA.byId[predId];
-    if(!pred) return;
-    const beforeUnlocked = new Set(Game.unlockedRewards(derived));
-    const beforeRankIdx = Game.rankIndex(derived.rank.name);
-
-    Resolution.resolveByAdmin(state, predId, answer, method); // "admin" (dev panel) or "ai" (data-refresh layer)
-    derived = Game.computeDerived(state);             // recompute BEFORE celebrating
-
-    // celebrate a correct call (once)
-    if(answer!==null && state.picks[predId] && state.picks[predId].option===answer && !state.celebrated.includes(predId)){
-      state.celebrated.push(predId);
-      const r = derived.per[predId];
+  /* ---- CELEBRATIONS ----
+     One shared pass that compares the freshly-computed `derived` against what
+     the player has already seen (state.celebrated / seenRank / seenUnlocks)
+     and queues FX for anything new: wins, streaks, rank-ups, unlocks. Used by
+     BOTH the local resolution path (dev panel / static feed) and the online
+     path (server-resolved outcomes arriving at sign-in or sync).              */
+  function celebrateProgress(){
+    let newWin = false;
+    for(const id of Object.keys(derived.per)){
+      const r = derived.per[id];
+      if(!r.isCorrect || state.celebrated.includes(id)) continue;
+      state.celebrated.push(id); newWin = true;
+      const pred = DATA.byId[id];
       let parts = [`+${r.base} base`];
       if(r.beat) parts.push(`+${r.beat} beat-crowd`);
       if(r.sBonus) parts.push(`+${r.sBonus} streak`);
       if(r.cBonus) parts.push(`+${r.cBonus} confidence`);
-      FX.celebrate({ kicker:"Prediction resolved", emoji:"🎯", headline:"YOU CALLED IT!", detail:pred.question, points:r.net, breakdown:parts.join(" · ") });
-      if(derived.streak>=3) FX.celebrate({ kicker:"On fire", emoji:"🔥", headline:`${derived.streak} in a row!`, detail:"Streak bonus stacking up.", withConfetti:false });
+      FX.celebrate({ kicker:"Prediction resolved", emoji:"🎯", headline:"YOU CALLED IT!",
+        detail: pred ? pred.question : "", points:r.net, breakdown:parts.join(" · ") });
     }
-    // rank-up celebration (only on increase)
-    const afterRankIdx = Game.rankIndex(derived.rank.name);
-    if(afterRankIdx>beforeRankIdx && Game.rankIndex(state.seenRank)<afterRankIdx){
+    if(newWin && derived.streak>=3){
+      FX.celebrate({ kicker:"On fire", emoji:"🔥", headline:`${derived.streak} in a row!`, detail:"Streak bonus stacking up.", withConfetti:false });
+    }
+    const rankIdx = Game.rankIndex(derived.rank.name);
+    if(rankIdx > Game.rankIndex(state.seenRank)){
       state.seenRank = derived.rank.name;
       FX.celebrate({ kicker:"Rank up!", emoji:derived.rank.emoji, headline:derived.rank.name, detail:derived.rank.title });
     }
-    // new reward unlocks
-    Game.unlockedRewards(derived).filter(id=>!beforeUnlocked.has(id) && !state.seenUnlocks.includes(id)).forEach(id=>{
+    Game.unlockedRewards(derived).filter(id=>!state.seenUnlocks.includes(id)).forEach(id=>{
       state.seenUnlocks.push(id);
       const rw = DATA.REWARDS.find(r=>r.id===id);
       FX.celebrate({ kicker:"Reward unlocked", emoji:rw.emoji, headline:rw.name,
         detail: rw.type==="theme"?"New theme available!":rw.type==="title"?"New title available!":"New badge earned!" });
     });
+  }
 
+  /* ---- RESOLUTION action (dev panel / static feed; local modes only) ----
+     Marks an outcome, recomputes, celebrates. answer===null undoes.           */
+  function resolvePrediction(predId, answer, method){
+    const pred = DATA.byId[predId];
+    if(!pred) return;
+    Resolution.resolveByAdmin(state, predId, answer, method); // "admin" (dev panel) or "ai" (data-refresh layer)
+    derived = Game.computeDerived(state);             // recompute BEFORE celebrating
+    celebrateProgress();
+    commit();
+  }
+
+  /* ---- online mode: swap the whole state for the server's view ----
+     Local mirror keeps cosmetics + which celebrations were already seen, so
+     signing in on a new device replays wins once and only once.               */
+  function adoptOnlineState(ms){
+    const mirror = Store.loadOnlineMirror();
+    state = Object.assign(mirror, {
+      _online: true,
+      username: ms.user.username,
+      picks: ms.picks || {},
+      resolutions: {},
+      daily: ms.daily || { streak:0, best:0, lastDay:null },
+      bonusPoints: ms.bonusPoints || 0,
+    });
+    for(const [id,r] of Object.entries(ms.resolutions||{})){
+      state.resolutions[id] = { answer:r.answer, at:r.at||0, method:r.method||"ai" };
+    }
+    derived = Game.computeDerived(state);
+    celebrateProgress();
+    commit();
+  }
+  /* Server rejected an optimistic pick → roll back and repaint. */
+  function revertPick(predId, prev){
+    if(prev) state.picks[predId] = prev; else delete state.picks[predId];
     commit();
   }
 
@@ -1264,18 +1463,219 @@ const UI = (() => {
       setView("feed");
     },
     getState:()=>state, getDerived:()=>derived,
-    resolvePrediction,
+    resolvePrediction, adoptOnlineState, revertPick, celebrateAndCommit(){ derived=Game.computeDerived(state); celebrateProgress(); commit(); },
     rerender(){ render(); },   // used by the data-refresh layer after merging new predictions
     resetAll(){ state=Store.reset(); derived=Game.computeDerived(state); applyTheme("default"); commit(); FX.toast("Progress reset"); },
   };
 })();
 
+/* ════════════════════════════════════════════════════════════════════════════
+   NET + ACCOUNT · the online layer
+   ----------------------------------------------------------------------------
+   Net    — thin fetch wrapper for the same-origin API. Timeouts, JSON errors,
+            cookies ride along automatically (httpOnly session — JS never sees
+            the token). NO secrets live in this file; it is fully public.
+   Account— optional sign-in. When signed in:
+              • the feed comes from the server (real close dates, REAL crowd
+                tallies aggregated from everyone's picks),
+              • every pick is pushed to the server, which validates and scores
+                it — the leaderboard cannot be faked from the client,
+              • daily check-in streaks + bonuses come from the server.
+            When signed out (or offline) the app runs exactly as before on
+            local guest state — the backend being down can never blank the UI.
+   ════════════════════════════════════════════════════════════════════════════ */
+const Net = (() => {
+  async function api(path, opts){
+    opts = opts || {};
+    const ctrl = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), 8000);
+    try{
+      const res = await fetch(path, {
+        method: opts.method || "GET",
+        headers: opts.body ? { "content-type":"application/json" } : {},
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: ctrl.signal,
+      });
+      const data = await res.json().catch(()=> ({}));
+      if(!res.ok){
+        const err = new Error(data && data.error ? data.error : "Request failed ("+res.status+")");
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    } finally { clearTimeout(timer); }
+  }
+  return { api };
+})();
+
+const Account = (() => {
+  let user = null;                       // {username} while signed in
+  const online = () => !!user;
+  const $ = s => document.querySelector(s);
+  let authTab = "login";
+
+  /* Replace the local demo feed with the server's (validated field-by-field —
+     server data is still re-checked client-side, defense in depth). */
+  async function refreshFeed(){
+    const data = await Net.api("/api/predictions");
+    const list = [];
+    (Array.isArray(data.predictions) ? data.predictions : []).slice(0, 300).forEach(raw => {
+      const p = Sync.validateNewPrediction(raw);
+      if(!p) return;
+      p.noShift = true;                  // server dates are real — never shifted
+      p.liveCrowd = true;                // crowd = real aggregated picks
+      p.crowd = (Array.isArray(raw.crowd) && raw.crowd.length === p.options.length)
+        ? raw.crowd.map(n => Math.max(0, Math.min(1e6, Math.round(Number(n)||0))))
+        : p.options.map(()=>0);
+      list.push(p);
+    });
+    if(list.length){
+      DATA.PREDICTIONS.length = 0;
+      for(const k in DATA.byId) delete DATA.byId[k];
+      for(const p of list){ DATA.PREDICTIONS.push(p); DATA.byId[p.id] = p; }
+    }
+  }
+
+  function celebrateDaily(r){
+    if(r.alreadyCheckedIn) return;
+    if(r.broke) FX.toast(`💔 Day streak reset — you were at ${r.lostStreak}. New one starts now.`);
+    FX.celebrate({
+      kicker: "Daily check-in", emoji: r.streak>=7 ? "💎" : r.streak>=3 ? "🔥" : "📅",
+      headline: r.streak>1 ? `Day ${r.streak} streak!` : "Welcome back!",
+      detail: r.broke ? "Back on the board — day 1 of your new streak." : "Come back tomorrow to keep it growing.",
+      points: r.bonusAwarded, withConfetti: r.streak>=3,
+    });
+  }
+
+  /* Enter online mode from a server me-state payload. */
+  async function enterOnline(ms){
+    user = ms.user;
+    try{ await refreshFeed(); }catch(e){ /* built-in feed keeps working */ }
+    UI.adoptOnlineState(ms);
+    try{
+      const r = await Net.api("/api/daily/checkin", { method:"POST", body:{} });
+      const state = UI.getState();
+      state.daily = { streak:r.streak, best:r.best||r.streak, lastDay:new Date().toISOString().slice(0,10) };
+      if(typeof r.totalBonus === "number") state.bonusPoints = r.totalBonus;
+      celebrateDaily(r);
+      UI.celebrateAndCommit();
+    }catch(e){ /* check-in is a bonus, never a blocker */ }
+  }
+
+  function exitOnline(){
+    user = null;
+    // restore the local demo feed + any static AI merge
+    location.reload();                   // cleanest full reset of feed + state
+  }
+
+  /* Push one pick to the server; roll back locally if it's rejected. */
+  async function pushPick(predId, prev){
+    const pick = UI.getState().picks[predId];
+    if(!pick) return;
+    try{
+      await Net.api("/api/picks", { method:"POST", body:{ id:predId, option:pick.option, confident:!!pick.confident } });
+    }catch(e){
+      UI.revertPick(predId, prev);
+      if(e.status === 401){       // session expired → clean return to guest mode
+        FX.toast("Session expired — sign in again");
+        user = null;
+        setTimeout(()=>location.reload(), 1400);
+      }
+      else FX.toast(e.message || "Couldn't save that pick — try again");
+    }
+  }
+
+  /* ---- modal wiring ---- */
+  function setTab(tab){
+    authTab = tab;
+    document.querySelectorAll("[data-authtab]").forEach(b=>b.classList.toggle("active", b.dataset.authtab===tab));
+    $("#authSub").textContent = tab==="login"
+      ? "Welcome back — your picks count on the live leaderboard."
+      : "Pick a username (no email needed) and you're in.";
+    $("#authSubmit").textContent = tab==="login" ? "Sign in" : "Create account";
+    $("#authPass").setAttribute("autocomplete", tab==="login" ? "current-password" : "new-password");
+    $("#authMsg").textContent = "";
+  }
+  function openModal(){
+    const signedIn = online();
+    $("#authForms").style.display = signedIn ? "none" : "";
+    $("#authAccount").style.display = signedIn ? "" : "none";
+    if(signedIn){
+      const d = UI.getDerived();
+      $("#acctInfo").innerHTML = `Signed in as <b>@${user.username.replace(/[&<>"]/g,"")}</b><br>` +
+        `${d.points} pts · 🔥 ${d.streak} call streak · 📅 ${d.dailyStreak}-day streak`;
+    } else { setTab(authTab); }
+    $("#authOverlay").classList.add("show");
+    if(!signedIn) setTimeout(()=>$("#authUser").focus(), 60);
+  }
+  function closeModal(){ $("#authOverlay").classList.remove("show"); }
+
+  async function submit(){
+    const username = $("#authUser").value.trim();
+    const password = $("#authPass").value;
+    const msg = $("#authMsg");
+    msg.classList.remove("ok");
+    if(!username || !password){ msg.textContent = "Fill in both fields."; return; }
+    if(authTab==="register" && password.length < 8){ msg.textContent = "Password must be at least 8 characters."; return; }
+    const btn = $("#authSubmit");
+    btn.disabled = true; msg.textContent = "";
+    try{
+      const ms = await Net.api("/api/auth/"+(authTab==="login"?"login":"register"),
+        { method:"POST", body:{ username, password } });
+      $("#authPass").value = "";
+      closeModal();
+      await enterOnline(ms);
+      FX.toast(authTab==="login" ? `Welcome back, @${ms.user.username}! 👋` : `Account created — welcome, @${ms.user.username}! 🎉`);
+    }catch(e){
+      msg.textContent = e.name==="AbortError" ? "Server unreachable — try again in a moment." : (e.message || "Something went wrong.");
+    }finally{ btn.disabled = false; }
+  }
+
+  async function logout(){
+    try{ await Net.api("/api/auth/logout", { method:"POST", body:{} }); }catch(e){}
+    closeModal();
+    FX.toast("Signed out — back to guest mode");
+    exitOnline();
+  }
+
+  /* Resume an existing session on load. Returns true if signed in. */
+  async function tryResume(){
+    try{
+      const ms = await Net.api("/api/auth/me");
+      if(ms && ms.user){ await enterOnline(ms); return true; }
+    }catch(e){ /* offline or static hosting → guest mode */ }
+    return false;
+  }
+
+  function init(){
+    const btn = document.getElementById("acctBtn");
+    if(btn) btn.addEventListener("click", openModal);
+    $("#authClose").addEventListener("click", closeModal);
+    $("#authOverlay").addEventListener("click", e=>{ if(e.target.id==="authOverlay") closeModal(); });
+    document.querySelectorAll("[data-authtab]").forEach(b=>b.addEventListener("click", ()=>setTab(b.dataset.authtab)));
+    $("#authForm").addEventListener("submit", e=>{ e.preventDefault(); submit(); });
+    $("#acctLogout").addEventListener("click", logout);
+  }
+
+  return { init, tryResume, online, pushPick, celebrateDaily, openModal };
+})();
+
 /* ---- DEV PANEL: hidden owner tool to resolve predictions (admin method). ----
    Open: tap the footer text 5×, OR press Ctrl/Cmd + Shift + D, OR call
-   openDevPanel() in the console. Not part of the player-facing UI.            */
+   openDevPanel() in the console. Not part of the player-facing UI.
+   LOCAL SANDBOX ONLY: while signed in, outcomes are decided by the server
+   (AI pipeline / admin API), so the panel politely refuses.                   */
 const Dev = (() => {
   const overlay = document.getElementById("devOverlay");
-  function open(){ renderList(); overlay.classList.add("show"); }
+  function open(){
+    if(UI.getState()._online){
+      FX.toast("Signed in: outcomes come from the server. Sign out to use the local sandbox.");
+      return;
+    }
+    renderList(); overlay.classList.add("show");
+  }
   function close(){ overlay.classList.remove("show"); }
 
   function renderList(){
@@ -1467,14 +1867,24 @@ const AgeGate = (() => {
 
 
 /* ---- bootstrap ---- */
-(function App(){
+(async function App(){
   AgeGate.check();   // wires the Privacy/Terms modal (no age gate; open to everyone)
-  UI.init();
+  UI.init();         // renders instantly on local data — network can only improve things
   Dev.init();
+  Account.init();
   window.openDevPanel = Dev.open; // console escape hatch for the owner (local-only; see note)
-  // Read the shared daily predictions (NOT a model call; no key involved).
-  // Non-blocking: the app renders immediately on built-in data, then merges.
-  Sync.pull();
+
+  // Try to resume a signed-in session (same-origin backend). If there is none —
+  // or the backend is unreachable / this is static hosting — fall back to full
+  // guest mode: static feed merge + a LOCAL daily check-in streak, so the game
+  // is sticky for everyone, signed in or not.
+  const signedIn = await Account.tryResume();
+  if(!signedIn){
+    Sync.pull();     // shared daily predictions file (not a model call, no key)
+    const r = Game.dailyCheckin(UI.getState());
+    Account.celebrateDaily(r);
+    UI.celebrateAndCommit();
+  }
 })();
 </script>
 </body>

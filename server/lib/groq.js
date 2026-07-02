@@ -40,7 +40,7 @@ const STABLE_SYSTEM_PROMPT = [
   "When generating (new_predictions): each must be specific and TIME-BOUND (a named deadline),",
   "objectively resolvable, family-friendly for all ages, with NO sexual, violent, hateful, illegal,",
   "self-harm, or drug/gambling content, and must NOT target real private individuals.",
-  "category must be one of: sports, music, movies, internet, awards, trends, general.",
+  "category must be one of: sports, space, music, movies, internet, awards, trends, general.",
   "Everything must be STRICTLY family-friendly for all ages: no politics, elections, politicians, war,",
   "weapons, crime, disasters, religion, gambling, drugs, or adult/violent content.",
   "options: 2-4 short choices. closeDate: ISO yyyy-mm-dd, 3-9 months in the future.",
@@ -63,16 +63,23 @@ function extractJson(text) {
   return null;
 }
 
-/* Low-level call. Gated by the rate-limit guard; records headers; handles 429.
- * Returns { text } on success, or { skipped, reason } when budget-blocked. */
-async function call(model, userText, jsonMode, estTokens) {
-  // ── BUDGET CHECK BEFORE THE CALL ──
-  const guard = RL.canProceed("groq", estTokens);
-  if (!guard.ok) return { skipped: true, reason: guard.reason, waitMs: guard.waitMs };
+/* Retry policy for TRANSIENT failures (network drop, timeout, 5xx):
+ * exponential backoff, small and bounded — the scheduled job runs again soon
+ * anyway, so after MAX_ATTEMPTS we give up quietly and the app keeps serving
+ * the last good cache. 429s NEVER retry here: they set the persistent back-off
+ * window (note429) and the whole run yields until it passes. */
+const MAX_ATTEMPTS = 3;
+const BACKOFF_BASE_MS = 1500;   // 1.5s → 6s between attempts
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* Low-level call. Gated by the rate-limit guard; records headers; handles 429;
+ * retries transient errors with exponential backoff.
+ * Returns { text } on success, or { skipped, reason } when budget-blocked or
+ * out of retries. NEVER lets a Groq failure escape as a crash. */
+async function call(model, userText, jsonMode, estTokens) {
   // ───────────────────────── KEY READ (backend only) ─────────────────────────
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error("GROQ_API_KEY is not set. Refusing to call Groq.");
+  if (!apiKey) return { skipped: true, reason: "no-api-key" }; // serve cache; never crash
   // ────────────────────────────────────────────────────────────────────────────
 
   const body = {
@@ -87,35 +94,58 @@ async function call(model, userText, jsonMode, estTokens) {
   };
   if (jsonMode) body.response_format = { type: "json_object" };
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  let res;
-  try {
-    res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
+  let lastErr = null;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    // ── BUDGET CHECK BEFORE EVERY ATTEMPT (each attempt is a real request) ──
+    const guard = RL.canProceed("groq", estTokens);
+    if (!guard.ok) return { skipped: true, reason: guard.reason, waitMs: guard.waitMs };
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    let res;
+    try {
+      res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (e) {
+      // network error / timeout → transient; back off and retry
+      lastErr = e;
+      clearTimeout(timer);
+      if (attempt < MAX_ATTEMPTS) await sleep(BACKOFF_BASE_MS * Math.pow(4, attempt - 1));
+      continue;
+    } finally {
+      clearTimeout(timer);
+    }
+
+    // ── RECORD HEADERS AFTER THE CALL (source of truth for the next decision) ──
+    RL.record("groq", res.headers);
+
+    if (res.status === 429) {
+      RL.note429("groq", res.headers.get("retry-after"));
+      return { skipped: true, reason: "429" };         // back off; app serves cache
+    }
+    if (res.status >= 500) {                            // provider hiccup → transient
+      lastErr = new Error("Groq HTTP " + res.status);
+      if (attempt < MAX_ATTEMPTS) await sleep(BACKOFF_BASE_MS * Math.pow(4, attempt - 1));
+      continue;
+    }
+    if (!res.ok) {
+      // 4xx other than 429 = our request is wrong; retrying won't help.
+      return { skipped: true, reason: "http-" + res.status };
+    }
+
+    const data = await res.json().catch(() => null);
+    const text =
+      data && data.choices && data.choices[0] && data.choices[0].message
+        ? data.choices[0].message.content || ""
+        : "";
+    return { text };
   }
-
-  // ── RECORD HEADERS AFTER THE CALL (source of truth for the next decision) ──
-  RL.record("groq", res.headers);
-
-  if (res.status === 429) {
-    RL.note429("groq", res.headers.get("retry-after"));
-    return { skipped: true, reason: "429" };           // back off; app serves cache
-  }
-  if (!res.ok) throw new Error("Groq HTTP " + res.status);
-
-  const data = await res.json();
-  const text =
-    data && data.choices && data.choices[0] && data.choices[0].message
-      ? data.choices[0].message.content || ""
-      : "";
-  return { text };
+  // Out of retries → skip quietly; cache keeps serving. (Reason is non-secret.)
+  return { skipped: true, reason: "transient: " + (lastErr ? lastErr.message : "unknown") };
 }
 
 /* Generate `n` new predictions. JSON mode on a fast model (no web needed).
@@ -128,8 +158,9 @@ async function generate(n) {
     `Today is ${today}. Generate ${n} new predictions about famous, mainstream events that almost EVERYONE recognizes and has an opinion on — ` +
     `like: FIFA World Cup match winners and the champion, Wimbledon/Grand Slam tennis, NBA stars' next teams and finals, ` +
     `celebrity relationships and weddings (e.g. Taylor Swift & Travis Kelce), #1 songs and new albums from huge artists, ` +
-    `blockbuster movies and box office, award shows (Grammys/Oscars/VMAs), and major phone/tech launches. ` +
-    `Use the "sports" category for sports. Prefer the biggest, most talked-about topics. ` +
+    `blockbuster movies and box office, award shows (Grammys/Oscars/VMAs), major phone/tech launches, ` +
+    `and space exploration (NASA missions, Moon landings, rocket launches, astronaut records). ` +
+    `Use the "sports" category for sports and the "space" category for space/NASA. Prefer the biggest, most talked-about topics. ` +
     `STRICTLY FAMILY-FRIENDLY (all ages): absolutely NO politics, elections, politicians, war, weapons, crime, disasters, ` +
     `religion, gambling, drugs, or anything violent or adult. Keep it light and fun. ` +
     `Each closeDate MUST be between 2 weeks and 9 months AFTER ${today} (ISO yyyy-mm-dd) — never in the past — so imminent big events are allowed. ` +

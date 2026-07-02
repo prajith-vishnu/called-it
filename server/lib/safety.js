@@ -10,7 +10,7 @@
  * depth), and the renderer only ever emits escaped text — never raw HTML.
  * ========================================================================== */
 
-const KNOWN_CATEGORIES = ["sports", "music", "movies", "internet", "awards", "trends", "general"];
+const KNOWN_CATEGORIES = ["sports", "space", "music", "movies", "internet", "awards", "trends", "general"];
 
 // ---- content blocklist (a pragmatic 13+ filter; tune for your needs) --------
 // Anything matching is DISCARDED, never shown. Word-ish boundaries keep it from

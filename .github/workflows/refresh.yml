@@ -21,7 +21,8 @@ name: Predictions refresh
 
 on:
   schedule:
-    - cron: "0 * * * *"       # every hour
+    - cron: "0 */3 * * *"     # every 3 hours (8 runs/day x <=2 calls = <=16,
+                              # well under the hard 40/day cap in ratelimit.js)
   workflow_dispatch: {}        # manual run from the Actions tab
 
 permissions:

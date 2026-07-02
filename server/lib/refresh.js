@@ -33,7 +33,11 @@ const REPO_ROOT = path.join(__dirname, "..", "..");
 const PUBLIC_JSON = process.env.PUBLIC_JSON_PATH || path.join(REPO_ROOT, "predictions.json");
 const MAX_KEEP = 60; // bound how many AI predictions accumulate
 
-const MIN_INTERVAL_MS = 20 * 60 * 60 * 1000; // ~once per day (default: one run/day)
+/* Multiple refreshes per day, spaced out. At the default 3h spacing that's at
+ * most 8 runs/day × 2 calls = 16 Groq calls — under the hard 40/day cap in
+ * ratelimit.js and ~1.6% of the free tier's ~1k/day. Override with
+ * REFRESH_MIN_INTERVAL_HOURS if you want it calmer/fresher. */
+const MIN_INTERVAL_MS = Math.max(0.5, Number(process.env.REFRESH_MIN_INTERVAL_HOURS) || 3) * 60 * 60 * 1000;
 const NEW_COUNT = 3;                          // new predictions per run (small drips, runs often)
 const MAX_RESOLVE_BATCH = 25;                 // cap closed-pending sent per call
 const INTER_CALL_DELAY_MS = 1200;             // spacing between the 2 calls (never burst; well under 30 RPM)
@@ -93,17 +97,22 @@ function byId(list) {
   return m;
 }
 
-/* The core run. `opts.force` bypasses the daily rate-limit (manual trigger).
+/* In-memory pipeline status for the health endpoint (lastRun itself is
+ * persisted in the cache; these fill in what happened since boot). */
+const pipelineStatus = { lastAttemptAt: 0, lastSuccessAt: 0, lastError: null, lastSummary: null };
+
+/* The core run. `opts.force` bypasses the min-interval (manual trigger).
  * Returns a small, key-free summary suitable for logging/HTTP responses. */
 async function runRefresh(opts) {
   opts = opts || {};
   const cache = loadCache();
   const now = Date.now();
 
-  // ── DEFENSIVE: at most one real Groq call per ~day ──────────────────────
+  // ── DEFENSIVE: keep real Groq runs spaced out ────────────────────────────
   if (!opts.force && now - (cache.lastRun || 0) < MIN_INTERVAL_MS) {
     return { skipped: true, reason: "rate-limited", lastRun: cache.lastRun };
   }
+  pipelineStatus.lastAttemptAt = now;
 
   const everything = allPredictions(cache);
   const resolvedIds = new Set((cache.resolutions || []).map((r) => r.id));
@@ -120,9 +129,18 @@ async function runRefresh(opts) {
   // ── CALL 2: resolve clear-cut closed questions via web search (optional) ──
   // Spaced out (never burst) and only if there's something to resolve.
   let res = { resolutions: [], skipped: false };
-  if (WEB_RESOLUTION && closedPending.length) {
+  const wantResolve = WEB_RESOLUTION && closedPending.length > 0;
+  if (wantResolve) {
     await sleep(INTER_CALL_DELAY_MS);
     res = await resolveClosed(closedPending);
+  }
+
+  // If NO call actually went through (budget-blocked, missing key, transient
+  // failure after retries), leave the cache — and crucially lastRun —
+  // untouched, so the next scheduled tick tries again instead of waiting a
+  // full interval behind a run that did nothing.
+  if (gen.skipped && (!wantResolve || res.skipped)) {
+    return { skipped: true, reason: gen.reason || res.reason || "no-calls", lastRun: cache.lastRun || 0 };
   }
 
   // ── SAFETY FILTER: validate/sanitize EVERYTHING before use ────────────────
@@ -168,7 +186,7 @@ async function runRefresh(opts) {
   saveCache(updated);
   writePublicJson(updated);   // emit the public feed the front-end fetches
 
-  return {
+  const summary = {
     skipped: false,
     // surface budget-driven skips so the run is observable without leaking secrets
     generateSkipped: !!gen.skipped, generateReason: gen.reason || null,
@@ -179,6 +197,32 @@ async function runRefresh(opts) {
     totalPredictions: updated.predictions.length,
     lastRun: now,
   };
+  pipelineStatus.lastSuccessAt = now;
+  pipelineStatus.lastError = null;
+  pipelineStatus.lastSummary = summary;
+  return summary;
 }
 
-module.exports = { runRefresh, loadCache, saveCache, publicView, CACHE_FILE, emptyCache };
+/* Safe wrapper for schedulers: a refresh failure is logged into the status and
+ * NEVER thrown — the last good cache keeps serving either way. */
+async function runRefreshSafe(opts) {
+  try {
+    return await runRefresh(opts);
+  } catch (e) {
+    pipelineStatus.lastError = e.message;    // message only — never a key or stack in responses
+    return { skipped: true, reason: "error", error: e.message };
+  }
+}
+
+function getPipelineStatus() {
+  const cache = loadCache();
+  return Object.assign({}, pipelineStatus, {
+    lastRun: cache.lastRun || 0,
+    cachedPredictions: (cache.predictions || []).length,
+    cachedResolutions: (cache.resolutions || []).length,
+    reviewQueue: (cache.reviewQueue || []).length,
+    minIntervalMs: MIN_INTERVAL_MS,
+  });
+}
+
+module.exports = { runRefresh, runRefreshSafe, getPipelineStatus, loadCache, saveCache, publicView, CACHE_FILE, emptyCache };

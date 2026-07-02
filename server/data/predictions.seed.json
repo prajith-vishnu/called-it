@@ -1,5 +1,168 @@
 [
   {
+    "id": "sp1",
+    "category": "space",
+    "question": "Will NASA's Artemis II crewed Moon mission launch in 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 35
+  },
+  {
+    "id": "sp2",
+    "category": "space",
+    "question": "Will a Starship test flight complete a full orbit of Earth in 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 25
+  },
+  {
+    "id": "sp3",
+    "category": "space",
+    "question": "Which company launches the most orbital rockets in 2026?",
+    "options": [
+      "SpaceX",
+      "Rocket Lab",
+      "ULA",
+      "Another company"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 30
+  },
+  {
+    "id": "sp4",
+    "category": "space",
+    "question": "Will a spacecraft from a new country soft-land on the Moon by Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 35
+  },
+  {
+    "id": "sp5",
+    "category": "space",
+    "question": "Will the record for most people in space at the same time be broken in 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 40
+  },
+  {
+    "id": "sp6",
+    "category": "space",
+    "question": "Will a private company announce a 2027 launch date for a space station module before Dec 31, 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 30
+  },
+  {
+    "id": "wc_winner",
+    "category": "sports",
+    "question": "Who will win the 2026 FIFA World Cup?",
+    "options": [
+      "Argentina",
+      "Brazil",
+      "France",
+      "Another team"
+    ],
+    "closeDate": "2026-07-19",
+    "pointValue": 50
+  },
+  {
+    "id": "wc_pens",
+    "category": "sports",
+    "question": "Will the 2026 World Cup final be decided by a penalty shootout?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-07-19",
+    "pointValue": 30
+  },
+  {
+    "id": "wimb_men",
+    "category": "sports",
+    "question": "Who wins the 2026 Wimbledon men's singles title?",
+    "options": [
+      "Jannik Sinner",
+      "Carlos Alcaraz",
+      "Novak Djokovic",
+      "Another player"
+    ],
+    "closeDate": "2026-07-13",
+    "pointValue": 45
+  },
+  {
+    "id": "lebron",
+    "category": "sports",
+    "question": "Where will LeBron James start the 2026-27 NBA season?",
+    "options": [
+      "Lakers",
+      "Another team",
+      "Retires"
+    ],
+    "closeDate": "2026-10-01",
+    "pointValue": 40
+  },
+  {
+    "id": "tswift_wed",
+    "category": "trends",
+    "question": "Will Taylor Swift and Travis Kelce get married in 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 30
+  },
+  {
+    "id": "summer_song",
+    "category": "music",
+    "question": "Who will have the #1 song on the Billboard Hot 100 this summer?",
+    "options": [
+      "Taylor Swift",
+      "Sabrina Carpenter",
+      "Drake",
+      "Someone else"
+    ],
+    "closeDate": "2026-09-01",
+    "pointValue": 40
+  },
+  {
+    "id": "movie_1b",
+    "category": "movies",
+    "question": "Will a movie released in 2026 gross over $1 billion worldwide?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 20
+  },
+  {
+    "id": "new_iphone",
+    "category": "general",
+    "question": "Will Apple announce a new iPhone in 2026?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "closeDate": "2026-12-31",
+    "pointValue": 15
+  },
+  {
     "id": "m1",
     "category": "music",
     "question": "Will a solo female artist hold the #1 spot on the global singles chart on Aug 31, 2026?",

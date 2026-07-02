@@ -4,13 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<!-- Content Security Policy (defense-in-depth). This is a single self-contained
-     file, so inline script/style are permitted; everything else is locked down:
-     no external script/object, no framing, data only from same origin. On a host
-     that can send headers, also set frame-ancestors + CSP as an HTTP header. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; upgrade-insecure-requests" />
 <meta name="referrer" content="no-referrer" />
-<!-- PWA: installable to a phone home screen; sw.js keeps it playable offline -->
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
@@ -18,42 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <title>Called It — a free, status-based prediction game</title>
 
-<!-- ============================================================================
-     CALLED IT
-     A free, status-based prediction game inspired by prediction markets
-     (Polymarket / Kalshi) but with ZERO money. The reward is status: points,
-     streaks, ranks, badges, leaderboard position. Nothing is purchasable,
-     nothing is redeemable, nothing has real-world value.
-
-     Single self-contained file, no framework, no build step. Two modes:
-       • GUEST (default): fully playable offline — no accounts, no personal
-         data, everything in this device's localStorage.
-       • SIGNED IN (optional): username + password only (no email). Picks are
-         validated + scored on the server for the live leaderboard; the
-         session rides in an httpOnly cookie this script can never read.
-
-     -------------------------------------------------------------------------
-     ARCHITECTURE — separated layers (see the <script> below):
-
-       LAYER 1 · DATA   → the predictions dataset + static config (categories,
-                          ranks, rewards, leaderboard demo entries). Pure data.
-       LAYER 2 · LOGIC  → scoring, streaks, crowd bonus, confidence stake,
-                          ranks, resolution. Pure functions + a thin Store
-                          (the ONLY localStorage touch-point). No DOM in here.
-       LAYER 3 · UI     → rendering, views/tabs, animations, dev panel.
-       LAYER 4 · NET    → Sync (static feed merge) + Net/Account (optional
-                          sign-in; mirrors server state, pushes picks).
-
-     The layers are decoupled on purpose: to port this to a native app you
-     replace the Store, keep LOGIC almost verbatim, and rebuild only UI.
-============================================================================ -->
-
 <style>
-/* ============================================================================
-   THEME TOKENS — clean, market-style (Polymarket-inspired) light UI.
-   A theme just overrides these custom properties via <html data-theme="...">.
-   Light themes only swap the accent; "midnight" is a full dark variant.
-============================================================================ */
 :root,[data-theme="default"]{
   --grad:#f6f5f0; --bg-0:#fdfcf8; --card:#fffefb; --card-2:#f1efe6; --stroke:#d8d3c4;
   --text:#171512; --muted:#6b665c;
@@ -71,25 +31,12 @@
   --good:#34d399; --bad:#fb7185; --gold:#fbbf24; --crowd:rgba(79,140,255,.14);
   --shadow:3px 3px 0 rgba(0,0,0,.5);
 }
-/* DARK MODE — an independent light/dark toggle (Profile → Appearance), not
-   the same thing as the "midnight" theme above. This only overrides the
-   neutral canvas tokens, so it composes with WHATEVER accent theme is
-   equipped (default/sunset/mint/bubblegum/gold) instead of replacing it —
-   e.g. gold accent + dark canvas is a combo "midnight" alone can't make.
-   Comes after every [data-theme] block so it wins the cascade regardless of
-   which accent is active. */
+/* dark mode toggle, separate from the midnight theme */
 [data-mode="dark"]{
   --grad:#0c0d10; --bg-0:#121316; --card:#17181c; --card-2:#1e2024; --stroke:#34363b;
   --text:#f0efe9; --muted:#96938a; --shadow:3px 3px 0 rgba(0,0,0,.5);
 }
 
-/* ============================================================================ BASE
-   Type: a plain system sans for reading, a monospace for anything that's a
-   number or a status word (points, ranks, percentages) — a scoreboard/ticker
-   feel that fits a prediction game better than a rounded app-icon font ever
-   would. Surfaces use hard 2px borders + a flat offset shadow instead of soft
-   blur, because that's the look I actually wanted, not a template default.
-============================================================================ */
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;height:100%;}
 body{
@@ -125,10 +72,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .view-title{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:4px 0 2px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .view-sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;}
 
-/* CATEGORY CHIPS — one row, never clipped: full-bleed horizontal scroller
-   (negative margins so it scrolls edge-to-edge past the view padding), tabs
-   never squish (flex:0 0 auto), scrollbar hidden, and a JS-toggled fade mask
-   hints that more tabs exist off-screen. */
+/* CATEGORY CHIPS */
 .chips{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;
   padding:2px 18px 14px;margin:0 -18px;max-width:none;scrollbar-width:none;
   overscroll-behavior-x:contain;}
@@ -156,8 +100,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .card.card-space{border-color:rgba(124,58,237,.35);background:linear-gradient(180deg,rgba(124,58,237,.055),transparent 46%),var(--card);}
 .card.card-space .cat-tag{border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.08);}
 
-/* PREDICTION OF THE DAY — the single soonest-closing marquee pick, pinned
-   above the feed with a gold spotlight so it can't be missed. */
+/* PREDICTION OF THE DAY */
 .potd-wrap{border:2px solid var(--gold);border-radius:12px;padding:10px 10px 2px;margin-bottom:16px;background:color-mix(in srgb,var(--gold) 7%,var(--card));}
 .potd-kicker{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin:2px 4px 8px;}
 .potd-wrap .card{margin-bottom:8px;}
@@ -523,12 +466,6 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script>
 "use strict";
 
-/* ════════════════════════════════════════════════════════════════════════════
-   LAYER 1 · DATA
-   Pure content + static config. Edit freely. In a real app this would arrive
-   from a backend; keeping it as plain data means the source can be swapped
-   without touching LOGIC or UI.
-   ════════════════════════════════════════════════════════════════════════════ */
 const DATA = (() => {
 
   const CATEGORIES = {
@@ -542,7 +479,6 @@ const DATA = (() => {
     general:  { name:"Will It Happen?",     emoji:"🔮", color:"#a78bfa" },
   };
 
-  // Rank ladder ordered by points required. Rank is a function of points.
   const RANKS = [
     { name:"Rookie",     emoji:"🌱", min:0,    title:"Just getting started" },
     { name:"Caller",     emoji:"📣", min:150,  title:"You've got a knack for this" },
@@ -552,9 +488,6 @@ const DATA = (() => {
     { name:"Legend",     emoji:"🛸", min:3500, title:"Reality bends to your calls" },
   ];
 
-  // Cosmetic rewards. UNLOCKED by reaching milestones — NEVER purchased, never
-  // spent, never sold. unlock.kind ∈ {points, streak, correct} (all monotonic
-  // so unlock state is sticky and derivable from peaks).
   const REWARDS = [
     // themes
     { id:"th_sunset",   type:"theme", name:"Sunset Pop",     emoji:"🌇", value:"sunset",    unlock:{kind:"points",value:150},  desc:"Warm coral & tangerine." },
@@ -581,13 +514,9 @@ const DATA = (() => {
     { id:"bg_daily30",  type:"badge", name:"True Devotion",emoji:"💎", value:"💎", unlock:{kind:"daily",value:30}, desc:"30-day check-in streak." },
   ];
 
-  // Preset usernames (NO free text → nothing to moderate). A future moderated
-  // custom-username flow would attach in UI.renderProfile (see comment there).
   const USERNAMES = ["Anonymous Oracle","Mystery Caller","Quiet Forecaster","Crystal Ball Kid",
     "Hot Take Hermit","Lowkey Prophet","Chaos Caller","Signal Seeker","Vibe Analyst","Future Goblin"];
 
-  // Illustrative DEMO leaderboard rivals. Clearly fake & fixed; the user's own
-  // progression is fully real and inserted live by points.
   const DEMO_LEADERBOARD = [
     { name:"SignalBot",    avatar:"🤖", points:3120 },
     { name:"NightOwl",     avatar:"🦉", points:1840 },
@@ -599,27 +528,8 @@ const DATA = (() => {
     { name:"IceCold",      avatar:"🧊", points:55   },
   ];
 
-  /* ----------------------------------------------------------------------------
-     PREDICTIONS (~50). Each item:
-       id          unique string
-       question    SPECIFIC + TIME-BOUND so it resolves cleanly (the
-                   "resolvable question" rule — every question names a concrete
-                   outcome and a deadline).
-       category    key of CATEGORIES
-       options     2–4 preset choices (no free text anywhere)
-       closeDate   ISO date the pick locks (see EVERGREEN note in LOGIC)
-       pointValue  base points for a correct call
-       crowd       per-option pick tallies (parallel to options), seeded with
-                   small illustrative starting numbers; the live bar is base +
-                   the user's own pick
-       resolution  "pending" by default (real outcome set via the dev panel /
-                   future crowd vote)
-  ---------------------------------------------------------------------------- */
   const PREDICTIONS = [
-    // ── MARQUEE / "everyone knows this" (real dates, family-friendly). These use
-    //    noShift:true so they show their true close dates. The daily AI job keeps
-    //    adding more like these. Edit freely.
-    { id:"wc_winner",  category:"sports",  question:"Who will win the 2026 FIFA World Cup?", options:["Argentina","Brazil","France","Another team"], crowd:[150,140,120,110], closeDate:"2026-07-19", pointValue:50, resolution:"pending", noShift:true },
+    { id:"wc_winner", category:"sports",  question:"Who will win the 2026 FIFA World Cup?", options:["Argentina","Brazil","France","Another team"], crowd:[150,140,120,110], closeDate:"2026-07-19", pointValue:50, resolution:"pending", noShift:true },
     { id:"wc_pens",    category:"sports",  question:"Will the 2026 World Cup final be decided by a penalty shootout?", options:["Yes","No"], crowd:[95,150], closeDate:"2026-07-19", pointValue:30, resolution:"pending", noShift:true },
     { id:"wimb_men",   category:"sports",  question:"Who wins the 2026 Wimbledon men's singles title?", options:["Jannik Sinner","Carlos Alcaraz","Novak Djokovic","Another player"], crowd:[150,150,80,70], closeDate:"2026-07-13", pointValue:45, resolution:"pending", noShift:true },
     { id:"lebron",     category:"sports",  question:"Where will LeBron James start the 2026-27 NBA season?", options:["Lakers","Another team","Retires"], crowd:[170,120,55], closeDate:"2026-10-01", pointValue:40, resolution:"pending", noShift:true },
@@ -704,27 +614,6 @@ const DATA = (() => {
   return { CATEGORIES, RANKS, REWARDS, USERNAMES, DEMO_LEADERBOARD, PREDICTIONS, byId };
 })();
 
-/* ════════════════════════════════════════════════════════════════════════════
-   LAYER 2 · LOGIC
-   Store (persistence adapter) + Game (pure scoring/streak/rank logic) +
-   Resolution (admin now, crowd-vote architected for later). No DOM in here.
-   ════════════════════════════════════════════════════════════════════════════ */
-
-/* ---- Store: the ONLY place that touches localStorage. ----------------------
-   To go online: replace load()/save() with API calls. The state SHAPE below is
-   the contract the rest of the app depends on. Everything score-related is
-   DERIVED by Game (never stored) so it can't drift out of sync.
-
-   Persisted state:
-     username     string|null                       chosen preset handle (local)
-     picks        { id:{ option, confident, at } }   the user's locked calls
-     resolutions  { id:{ answer, at, method } }       known outcomes (+ source)
-     activeTheme  string                              equipped theme key
-     activeTitle  string|null                          equipped title text
-     celebrated   [id]                                wins already celebrated
-     seenUnlocks  [rewardId]                          reward unlocks celebrated
-     seenRank     string                              highest rank celebrated
------------------------------------------------------------------------------ */
 const Store = (() => {
   const KEY = "calledit.v1.state";          // guest (this-device) progress
   const ONLINE_KEY = "calledit.v1.online";  // local mirror of the signed-in view (cosmetics + seen-celebrations)
@@ -743,7 +632,6 @@ const Store = (() => {
       return Object.assign(defaultState(), JSON.parse(raw));
     }catch(e){ console.warn("Could not read save; starting fresh.", e); return defaultState(); }
   }
-  /* Signed-in state saves under its own key so it NEVER clobbers guest progress. */
   function save(state){
     try{ localStorage.setItem(state._online ? ONLINE_KEY : KEY, JSON.stringify(state)); }
     catch(e){ console.warn("Could not persist save.", e); }
@@ -764,11 +652,7 @@ const Game = (() => {
   /* Confidence stakes per period (the only way to LOSE points; opt-in). */
   const CONFIDENCE_PER_WEEK = 3;
 
-  /* EVERGREEN_DEMO: sample close dates are anchored in 2026–2027 so the demo
-     always works "now". When on, dates are shifted on load so the earliest one
-     is ~3 days out and the rest keep their relative spacing — the feed always
-     has fresh "closing soon" cards whenever the file is opened. Set false to
-     use literal closeDate strings (what a real backend would send).            */
+  // shifts the seed dates so there's always something closing soon
   const EVERGREEN_DEMO = true;
   const DAY = 86400000;
   const SHIFT = (() => {
@@ -777,8 +661,6 @@ const Game = (() => {
     return (Date.now() + 3*DAY) - Math.min(...times);
   })();
 
-  // Built-in seed uses the evergreen shift; real AI dates (source:"ai") and flagged
-  // test cards (noShift) keep their literal close date.
   function closeTime(pred){
     const base = new Date(pred.closeDate+"T23:59:59").getTime();
     return base + ((pred.source==="ai" || pred.noShift) ? 0 : SHIFT);
@@ -787,12 +669,6 @@ const Game = (() => {
   function isResolved(state, id){ return !!state.resolutions[id]; }
   function daysUntilClose(pred){ return Math.ceil((closeTime(pred) - Date.now())/DAY); }
 
-  /* Effective crowd tallies. Two sources:
-       • liveCrowd (signed-in feed): REAL aggregated picks from the server —
-         they already include this user's pick, so nothing is added here.
-       • local/demo cards: seeded base + the user's own pick (the "as people
-         pick" nudge for the offline prototype).
-     Returns counts, total, and per-option fractions (parallel to options).    */
   function effectiveCrowd(state, pred){
     const counts = (pred.crowd || pred.options.map(()=>0)).slice();
     if(!pred.liveCrowd){
@@ -805,8 +681,6 @@ const Game = (() => {
     return { counts, total, pct };
   }
 
-  /* Streak bonus: small at 3, larger at 5, biggest at 10+. Awarded per correct
-     call based on the streak length reached.                                   */
   function streakBonus(streak){
     if(streak>=10) return 50;
     if(streak>=5)  return 25;
@@ -814,15 +688,11 @@ const Game = (() => {
     return 0;
   }
 
-  /* Beat-the-crowd bonus: only if the user did NOT pick the crowd favorite.
-     Scales inversely with how popular their (correct) pick was — the more
-     contrarian and correct, the bigger the bonus. Mirrors "buying low".        */
   function beatBonus(pred, pickPct, leaderPct){
-    if(pickPct >= leaderPct - 1e-9) return 0;          // picked the favorite → no bonus
-    return Math.round(pred.pointValue * (1 - pickPct)); // unpopular + right → big
+    if(pickPct >= leaderPct - 1e-9) return 0;
+    return Math.round(pred.pointValue * (1 - pickPct));
   }
 
-  /* ISO-week key (e.g. "2026-W26") used for the confidence-per-period limit. */
   function isoWeekKey(ts){
     const d = new Date(ts);
     const day = (d.getUTCDay()+6)%7;
@@ -839,10 +709,6 @@ const Game = (() => {
   }
   function confidenceLeft(state){ return Math.max(0, CONFIDENCE_PER_WEEK - confidenceUsedThisWeek(state)); }
 
-  /* THE SCORER. Recomputes ALL derived stats from scratch from picks +
-     resolutions, processing resolved-with-pick events in resolution order.
-     Recomputing (vs incrementing) means undo/reset can never desync points or
-     streaks. This is the function you'd lift almost verbatim into a server.    */
   function computeDerived(state){
     const events = Object.keys(state.resolutions)
       .filter(id => state.picks[id] !== undefined && DATA.byId[id])
@@ -883,8 +749,6 @@ const Game = (() => {
 
     const totalResolved = events.length;
     const accuracy = totalResolved ? Math.round(correct/totalResolved*100) : 0;
-    // daily check-in bonus: stored (not derived) because it isn't replayable
-    // from picks×resolutions; it only ever grows, so peaks stay monotonic.
     const bonus = state.bonusPoints || 0;
     points += bonus; peakPoints += bonus;
     return {
@@ -897,9 +761,6 @@ const Game = (() => {
     };
   }
 
-  /* Daily check-in (guest/local mode) — the exact formula the server uses for
-     accounts: day 1 → 10 pts, +5 per consecutive day, capped at 40. Mutates
-     state; returns what happened so the UI can celebrate (or mourn a break). */
   function dailyCheckin(state){
     const today = new Date().toISOString().slice(0,10);
     const daily = state.daily || (state.daily = { streak:0, best:0, lastDay:null });
@@ -915,9 +776,6 @@ const Game = (() => {
     return { alreadyCheckedIn:false, streak:daily.streak, best:daily.best, bonusAwarded, broke, lostStreak };
   }
 
-  /* "Made a call today" streak — distinct from BOTH the correct-answer streak
-     and the check-in streak: it rewards actually locking a pick each day.
-     Device-local, no points attached (check-in already pays), pure bragging. */
   function recordCallDay(state){
     const today = new Date().toISOString().slice(0,10);
     const cd = state.callDays || (state.callDays = { streak:0, best:0, lastDay:null });
@@ -929,8 +787,6 @@ const Game = (() => {
     return { already:false, streak:cd.streak, best:cd.best };
   }
 
-  /* Per-category record from resolved picks → "your best category".
-     Needs ≥2 resolved calls (and ≥1 win) in a category before it counts. */
   function categoryStats(state, d){
     const per = (d || computeDerived(state)).per;
     const map = {};
@@ -946,8 +802,6 @@ const Game = (() => {
     return { list, best };
   }
 
-  /* Local "prediction personality" — revealed after 10 resolved calls.
-     Deterministic rules over on-device stats; nothing leaves the device. */
   const PERSONALITY_MIN = 10;
   function personality(d, cats){
     if(d.totalResolved < PERSONALITY_MIN) return null;
@@ -970,7 +824,6 @@ const Game = (() => {
   function nextRankFor(points){ return DATA.RANKS.find(r=>r.min>points) || null; }
   function rankProgress(points){ const c=rankFor(points), n=nextRankFor(points); return n ? (points-c.min)/(n.min-c.min) : 1; }
 
-  /* Which rewards are unlocked, derived from monotonic peaks → sticky. */
   function unlockedRewards(d){
     return DATA.REWARDS.filter(r=>{
       if(r.unlock.kind==="points")  return d.peakPoints>=r.unlock.value;
@@ -999,41 +852,20 @@ const Game = (() => {
   };
 })();
 
-/* ---- Resolution: how the app learns outcomes. ------------------------------
-   PRIMARY (now): admin resolution via the dev panel → resolveByAdmin().
-   FUTURE (architected, NOT live): crowd-vote resolution. The scorer only reads
-   state.resolutions[id] = { answer, at, method }, so a new resolution SOURCE
-   can be added without touching scoring. The stubs below show exactly where a
-   "players vote after close, majority decides" flow would attach. No moderation
-   surface exists yet because there is no free text anywhere.                   */
 const Resolution = (() => {
   function resolveByAdmin(state, id, answer, method){
     if(answer===null) delete state.resolutions[id];
     else state.resolutions[id] = { answer, at: Date.now(), method: method || "admin" };
   }
 
-  // ---- crowd-vote stubs (future; intentionally inert) ----
-  // A real implementation would: open voting only after isClosed(pred); collect
-  // one preset-option vote per device/user (no free text); then once a quorum is
-  // reached, set resolution via the SAME shape with method:"crowd".
-  function openCrowdVote(/* pred */){ /* TODO: enable post-close voting UI */ }
-  function castCrowdVote(/* state, id, option */){ /* TODO: record one vote */ }
-  function tallyCrowdVote(/* state, id */){
-    // TODO: return the majority option once quorum is met, else null.
-    // Wiring would be: const ans = tallyCrowdVote(state,id);
-    //                  if(ans) state.resolutions[id]={answer:ans,at:Date.now(),method:"crowd"};
+  function openCrowdVote(pred){}
+  function castCrowdVote(state, id, option){}
+  function tallyCrowdVote(state, id){
     return null;
   }
   return { resolveByAdmin, openCrowdVote, castCrowdVote, tallyCrowdVote };
 })();
 
-/* ════════════════════════════════════════════════════════════════════════════
-   LAYER 3 · UI
-   The only layer that touches the DOM. Pattern: actions mutate state → commit()
-   (persist + recompute derived) → render(). FX holds animations.
-   ════════════════════════════════════════════════════════════════════════════ */
-
-/* ---- FX: confetti + celebration overlay + toast (no libraries) ------------- */
 const FX = (() => {
   const canvas = document.getElementById("confetti");
   const ctx = canvas.getContext("2d");
@@ -1092,12 +924,6 @@ const FX = (() => {
   return { confetti, celebrate, toast };
 })();
 
-/* ---- Sound: short synthesized tones for key moments (Web Audio oscillators,
-   no audio files — zero extra weight, works offline). The AudioContext is
-   created lazily on the first play(), which only ever happens inside a click
-   handler, so it satisfies browsers' autoplay-needs-a-gesture rule without
-   any extra "enable sound" prompt. Muted by default is a bad default for a
-   game, so it starts ON, but Profile → Appearance can flip it off any time. */
 const Sound = (() => {
   let ctx = null, enabled = true;
   function ensureCtx(){
@@ -1159,12 +985,6 @@ const UI = (() => {
     return { text:"Closes "+new Date(Game.closeTime(pred)).toLocaleDateString(undefined,{month:"short",day:"numeric"}), soon:false };
   }
 
-  /* Live countdown: ticks every second so a card under 24h counts down for
-     real instead of only updating on the next full re-render. Cheap by
-     design — it only touches .close-info nodes currently in the DOM, and
-     only rewrites text for ones inside the last day (the far-out "Closes
-     Jul 13" labels don't need per-second precision). Under the final hour it
-     switches to a live mm:ss. */
   function tickCountdowns(){
     const now = Date.now();
     document.querySelectorAll(".close-info[data-close-ts]").forEach(el=>{
@@ -1218,15 +1038,6 @@ const UI = (() => {
     }
   }
 
-  /* ---- FEED ---- */
-  /* Prediction of the Day: the single open pick that ends soonest, biased
-     toward the hand-picked "everyone recognizes this" marquee questions
-     (source noShift, e.g. World Cup winner, Wimbledon, iPhone launch) over
-     the long-tail ones. There's no guarantee something in the dataset
-     genuinely closes today — real predictions here run weeks to months out
-     — so this surfaces the closest, highest-profile thing to root for
-     instead of inventing a fake same-day event. Only shown on "All" so it
-     never looks like it belongs to whatever category is filtered.        */
   function predictionOfTheDay(){
     if(feedFilter!=="all") return null;
     const open = DATA.PREDICTIONS.filter(p=>!Game.isResolved(state,p.id) && !Game.isClosed(p));
@@ -1377,11 +1188,6 @@ const UI = (() => {
       btn.addEventListener("click",()=>shareCall(btn.dataset.share)));
   }
 
-  /* ---- VISUAL SHARE CARDS ----
-     Canvas-drawn branded image → Web Share (as a file) on supported devices,
-     else copy-image-to-clipboard, else download; plain-text share is the last
-     resort. Cards contain ONLY the prediction, the pick, the crowd %, and the
-     app name/link — never anything personal. Space cards get a starfield 🌌. */
   const APP_LINK = /^https?:$/.test(location.protocol)
     ? location.origin + location.pathname
     : "https://prajith-vishnu.github.io/called-it/";
@@ -1405,7 +1211,6 @@ const UI = (() => {
     return lines;
   }
 
-  /* Shared 1080×1080 chrome: background, framed card, logo. Returns ctx + palette. */
   function cardBase(space){
     const cv = document.createElement("canvas"); cv.width = 1080; cv.height = 1080;
     const x = cv.getContext("2d");
@@ -1553,10 +1358,6 @@ const UI = (() => {
     await deliverCard(drawStatsCard(d, persona), "called-it-stats.png", text);
   }
 
-  /* ---- core interaction: LOCK IN ----
-     Signed in: optimistic local update, then the pick is pushed to the server
-     (the only thing that counts for the leaderboard). If the server rejects it
-     (closed / already resolved / offline) the local state rolls back.         */
   function lockIn(predId, option, btnEl){
     const pred = DATA.byId[predId];
     if(!pred || Game.isResolved(state,predId) || Game.isClosed(pred)) return;
@@ -1781,12 +1582,7 @@ const UI = (() => {
       `<div class="lb-note">Rewards unlock automatically when you hit a milestone. They're cosmetic only — you never spend points and nothing is for sale.</div>` + rows;
   }
 
-  /* ---- LEADERBOARD ----
-     LIVE: computed + cached on the server from real accounts (rank, username,
-     score, hot-streak flair). The client can't fake it — it only ever sends
-     picks. Falls back to the labeled demo board when the backend is
-     unreachable (static/GitHub-Pages mode), so the view never breaks.        */
-  let lastBoard = null;   // last successful server payload (survives tab switches)
+  let lastBoard = null;
   const AVATARS = ["🦊","🐸","🦉","🐙","🦄","🐝","🐬","🦁","🐨","🦜","🐢","🦋","🐳","🦖","🐹","🦩"];
   const avatarOf = n => { let h=0; for(const c of String(n)) h=(h*31 + c.charCodeAt(0))>>>0; return AVATARS[h%AVATARS.length]; };
 
@@ -1843,10 +1639,6 @@ const UI = (() => {
       `<div class="lb-note">⚠️ Offline preview — these rivals are <b>illustrative demo players</b>. The live board appears when the backend is reachable.</div>` + html;
   }
 
-  /* ---- theme + dark mode + nav + master render ----
-     darkMode: null follows the OS preference, true/false is an explicit
-     override from Profile → Appearance. Independent of the accent theme
-     (see the [data-mode="dark"] CSS block) so any accent can go dark.        */
   function resolvedDark(){
     if(state.darkMode===true) return true;
     if(state.darkMode===false) return false;
@@ -1872,12 +1664,6 @@ const UI = (() => {
     else if(currentView==="board") renderBoard();
   }
 
-  /* ---- CELEBRATIONS ----
-     One shared pass that compares the freshly-computed `derived` against what
-     the player has already seen (state.celebrated / seenRank / seenUnlocks)
-     and queues FX for anything new: wins, streaks, rank-ups, unlocks. Used by
-     BOTH the local resolution path (dev panel / static feed) and the online
-     path (server-resolved outcomes arriving at sign-in or sync).              */
   function celebrateProgress(){
     let newWin = false;
     for(const id of Object.keys(derived.per)){
@@ -1940,20 +1726,15 @@ const UI = (() => {
     });
   }
 
-  /* ---- RESOLUTION action (dev panel / static feed; local modes only) ----
-     Marks an outcome, recomputes, celebrates. answer===null undoes.           */
   function resolvePrediction(predId, answer, method){
     const pred = DATA.byId[predId];
     if(!pred) return;
-    Resolution.resolveByAdmin(state, predId, answer, method); // "admin" (dev panel) or "ai" (data-refresh layer)
-    derived = Game.computeDerived(state);             // recompute BEFORE celebrating
+    Resolution.resolveByAdmin(state, predId, answer, method);
+    derived = Game.computeDerived(state);
     celebrateProgress();
     commit();
   }
 
-  /* ---- online mode: swap the whole state for the server's view ----
-     Local mirror keeps cosmetics + which celebrations were already seen, so
-     signing in on a new device replays wins once and only once.               */
   function adoptOnlineState(ms){
     const mirror = Store.loadOnlineMirror();
     state = Object.assign(mirror, {
@@ -1971,7 +1752,6 @@ const UI = (() => {
     celebrateProgress();
     commit();
   }
-  /* Server rejected an optimistic pick → roll back and repaint. */
   function revertPick(predId, prev){
     if(prev) state.picks[predId] = prev; else delete state.picks[predId];
     commit();
@@ -2001,21 +1781,6 @@ const UI = (() => {
   };
 })();
 
-/* ════════════════════════════════════════════════════════════════════════════
-   NET + ACCOUNT · the online layer
-   ----------------------------------------------------------------------------
-   Net    — thin fetch wrapper for the same-origin API. Timeouts, JSON errors,
-            cookies ride along automatically (httpOnly session — JS never sees
-            the token). NO secrets live in this file; it is fully public.
-   Account— optional sign-in. When signed in:
-              • the feed comes from the server (real close dates, REAL crowd
-                tallies aggregated from everyone's picks),
-              • every pick is pushed to the server, which validates and scores
-                it — the leaderboard cannot be faked from the client,
-              • daily check-in streaks + bonuses come from the server.
-            When signed out (or offline) the app runs exactly as before on
-            local guest state — the backend being down can never blank the UI.
-   ════════════════════════════════════════════════════════════════════════════ */
 const Net = (() => {
   async function api(path, opts){
     opts = opts || {};
@@ -2049,8 +1814,6 @@ const Account = (() => {
   const $ = s => document.querySelector(s);
   let authTab = "login";
 
-  /* Replace the local demo feed with the server's (validated field-by-field —
-     server data is still re-checked client-side, defense in depth). */
   async function refreshFeed(){
     const data = await Net.api("/api/predictions");
     const list = [];
@@ -2187,13 +1950,6 @@ const Account = (() => {
     exitOnline();
   }
 
-  /* Resume an existing session on load. Returns true if signed in.
-     Also figures out whether there's a real backend to sign in to at all —
-     this repo ships as a static site on GitHub Pages by default, which has
-     no server behind it, so /api/* requests there 404/405 (a plain static
-     host can't run POST routes). Without this check, tapping "Sign in" on
-     the static demo would open a form that can only ever fail with a raw
-     HTTP error — that's the exact bug this fixes. */
   async function tryResume(){
     try{
       const ms = await Net.api("/api/auth/me");
@@ -2294,34 +2050,10 @@ const Dev = (() => {
   return { init, open };
 })();
 
-/* ════════════════════════════════════════════════════════════════════════════
-   DATA-REFRESH LAYER (front-end side) · Sync
-   ----------------------------------------------------------------------------
-   Reads the shared daily predictions file over HTTPS (GET predictions.json,
-   same-origin — e.g. generated by the cron job and served by GitHub Pages). Facts:
-
-     • There is NO API key here and never should be. The Groq key lives ONLY in
-       the scheduled function's env. This file is shipped to the browser and is
-       fully public.
-     • This does NOT call Groq. It only reads a file the daily job already
-       produced, so every user reads the SAME data — zero per-user / per-pageload
-       model calls.
-     • The file's contents are treated as UNTRUSTED: every field is re-validated
-       and safety-filtered here (defense in depth, mirroring the server) before it
-       is merged. Nothing is ever injected as raw HTML — rendering still goes
-       through cardHTML()/esc(), which escapes all text.
-     • If the file is missing/unreachable (e.g. opened from file://), this fails
-       silently and the app runs exactly as before on its built-in dataset.
-   ════════════════════════════════════════════════════════════════════════════ */
 const Sync = (() => {
-  // Same-origin static file by default (GitHub Pages serves predictions.json).
-  // To read from a cross-origin function instead, set window.CALLED_IT_PREDICTIONS_URL.
   const FEED_URL = (typeof window !== "undefined" && window.CALLED_IT_PREDICTIONS_URL) || "predictions.json";
   const KNOWN_CATS = Object.keys(DATA.CATEGORIES);
 
-  /* ---- CLIENT-SIDE SAFETY FILTER (AI output is untrusted) ------------------
-     A compact mirror of the server filter. If anything is even slightly off,
-     the item is DISCARDED rather than shown. */
   const UNSAFE = /(porn|sex|nude|nsfw|kill|murder|suicide|self[\s-]?harm|rape|nazi|terror|bomb|gun\b|drug|cocaine|slur|gore|gambl)/i;
   const PRIVATE_SIGNALS = /(@[a-z0-9_]+|https?:\/\/|www\.|\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\b[\w.+-]+@[\w-]+\.[\w.-]+\b)/i;
 
@@ -2407,10 +2139,6 @@ const Sync = (() => {
   return { pull, validateNewPrediction };
 })();
 
-/* ════════════════════════════════════════════════════════════════════════════
-   Privacy/Terms wiring. No age gate — the app is open to everyone; content is
-   kept family-friendly by the generation guardrails + safety filter instead.
-   ════════════════════════════════════════════════════════════════════════════ */
 const AgeGate = (() => {
   const $ = s => document.querySelector(s);
   function openPrivacy(e){ if(e) e.preventDefault(); const o=$("#privacyOverlay"); if(o) o.classList.add("show"); }

@@ -1,50 +1,5 @@
 "use strict";
-/* ============================================================================
- * server.js — zero-dependency backend for Called It (Node 18+, no packages:
- * nothing for `npm audit` to flag, no supply chain to trust).
- *
- * ROUTES
- *   Public reads (always served from cache — NEVER wait on Groq):
- *     GET  /predictions.json | /api/predictions   the feed + real crowd + outcomes
- *     GET  /api/leaderboard                        cached, recomputed on a TTL
- *     GET  /api/health                             pipeline liveness + last-updated
- *   Accounts (opaque session cookie: httpOnly, SameSite=Strict, Secure in prod):
- *     POST /api/auth/register   { username, password }
- *     POST /api/auth/login      { username, password }
- *     POST /api/auth/logout
- *     GET  /api/auth/me
- *   Authenticated game actions (validated server-side, scored server-side):
- *     GET  /api/me/state
- *     POST /api/picks           { id, option, confident }
- *     POST /api/daily/checkin
- *   Admin (x-admin-token, constant-time compare):
- *     POST /api/refresh         run the Groq refresh now (still budget-guarded)
- *     POST /api/admin/resolve   { id, outcome|null }
- *   Static front-end: ALLOWLISTED files only (see STATIC_FILES — this is what
- *   keeps /server/.env, db.json and .git/ unreachable even though they live
- *   under the repo root this server serves from).
- *
- * RELIABILITY
- *   • Every route runs inside one try/catch wrapper → a bad request logs and
- *     returns 500 JSON; it can never take the process down.
- *   • The Groq refresh runs on an in-process schedule (plus optional CI cron),
- *     is triple-guarded (min interval + hard daily cap + provider headers),
- *     retries transient failures with backoff, and on any failure the last
- *     good cache keeps serving. User requests never trigger model calls.
- *   • process-level handlers log unexpected errors and keep serving (state
- *     writes are atomic, so continuing is safe). For production also run under
- *     a supervisor (pm2 / systemd / your host's restarter) as a second net.
- *
- * SECURITY
- *   • Groq key + admin token live only in env; never in responses or logs.
- *   • Passwords: scrypt hashes (see lib/auth.js). Sessions: opaque tokens,
- *     hashed at rest, httpOnly cookies.
- *   • CSRF: SameSite=Strict cookie + Origin / Sec-Fetch-Site checks on every
- *     state-changing request + JSON-only bodies.
- *   • Rate limits: global per-IP on everything, stricter sliding windows on
- *     login/register (per IP AND per account).
- *   • All input validated server-side; client is never trusted.
- * ========================================================================== */
+// backend for Called It - accounts, picks, leaderboard, and the Groq refresh job
 
 const http = require("node:http");
 const fs = require("node:fs");
@@ -67,10 +22,7 @@ const SECURE_COOKIES = process.env.COOKIE_SECURE === "1" || process.env.NODE_ENV
 const SCHEDULER_ENABLED = process.env.SCHEDULER_ENABLED !== "0";
 const STARTED_AT = Date.now();
 
-/* ── static allowlist ─────────────────────────────────────────────────────────
- * The repo root contains things that must NEVER be served (server/.env,
- * server/data/db.json, .git/…), so instead of "serve anything under root
- * except traversal" we serve ONLY these named files. Add new assets here. */
+// only these exact files are servable, so .env/db.json/.git never are
 const STATIC_FILES = {
   "/": "index.html",
   "/index.html": "index.html",
@@ -91,7 +43,6 @@ const MIME = {
   ".ico": "image/x-icon", ".webmanifest": "application/manifest+json",
 };
 
-/* ── tiny helpers ──────────────────────────────────────────────────────────── */
 function securityHeaders(res) {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -129,7 +80,6 @@ function clientIp(req) {
   return (req.socket && req.socket.remoteAddress) || "unknown";
 }
 
-/* Global per-IP rate limit (fixed window): DoS hygiene on every route. */
 const RL_WINDOW_MS = 60000, RL_MAX = 240;
 const rlHits = new Map();
 function rateLimited(req) {
@@ -142,7 +92,6 @@ function rateLimited(req) {
   return e.count > RL_MAX;
 }
 
-/* Constant-time admin token check; fails closed if unset. */
 function adminAuthorized(req) {
   if (!ADMIN_TOKEN) return false;
   const got = req.headers["x-admin-token"];
@@ -152,7 +101,6 @@ function adminAuthorized(req) {
   return crypto.timingSafeEqual(a, b);
 }
 
-/* Cookie parsing + session cookie helpers. */
 const COOKIE = "ci_session";
 function cookies(req) {
   const out = {};
@@ -173,10 +121,6 @@ function clearSessionCookie(res) {
 }
 function sessionUser(req) { return auth.getSessionUser(cookies(req)[COOKIE]); }
 
-/* CSRF guard for state-changing requests (on top of SameSite=Strict):
- * a browser cross-site request always carries Origin and/or Sec-Fetch-Site —
- * if either says "not us", reject. Non-browser clients (curl, CI) send
- * neither, which is fine: they carry no ambient cookies to ride on. */
 function crossSiteBlocked(req) {
   const sfs = req.headers["sec-fetch-site"];
   if (typeof sfs === "string" && !["same-origin", "same-site", "none"].includes(sfs)) return true;
@@ -190,7 +134,6 @@ function crossSiteBlocked(req) {
   return false;
 }
 
-/* Read + parse a small JSON body. Rejects oversized/invalid payloads. */
 const MAX_BODY_BYTES = 16 * 1024;
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -220,7 +163,6 @@ function readJsonBody(req) {
   });
 }
 
-/* The per-user state payload the client mirrors (no secrets, no other users). */
 function meState(user) {
   const picks = db.get().picks[user.id] || {};
   const resolutions = game.resolutionsMap();
@@ -237,10 +179,7 @@ function meState(user) {
   };
 }
 
-/* ── routes ──────────────────────────────────────────────────────────────────
- * handler(req, res, { body, user, ip }) — `user` present when auth:true.     */
 const routes = [
-  // ---- public reads (cache only; never call Groq) ----
   { method: "GET", path: "/api/predictions", handler: (req, res) => sendJSON(res, 200, game.publicFeed()) },
   { method: "GET", path: "/predictions.json", handler: (req, res) => sendJSON(res, 200, game.publicFeed()) },
   {
@@ -347,7 +286,6 @@ const routes = [
   },
 ];
 
-/* ── static serving: allowlist only ─────────────────────────────────────────── */
 function serveStatic(req, res, urlPath) {
   const clean = decodeURIComponent(urlPath.split("?")[0]);
   const rel = STATIC_FILES[clean];
@@ -363,7 +301,6 @@ function serveStatic(req, res, urlPath) {
   });
 }
 
-/* ── the one request handler: everything runs inside this try/catch ─────────── */
 async function handle(req, res) {
   const url = req.url || "/";
   const pathOnly = url.split("?")[0];
@@ -412,17 +349,12 @@ async function handle(req, res) {
 
 const server = http.createServer((req, res) => {
   handle(req, res).catch((e) => {
-    // The error wall: one bad request logs + 500s; the process keeps serving.
     log.error("request failed", e, { method: req.method, path: (req.url || "").split("?")[0] });
     if (!res.headersSent) fail(res, 500, "internal error");
     else try { res.end(); } catch (e2) {}
   });
 });
 
-/* ── scheduled Groq refresh (in-process; user requests can never trigger it) ──
- * Ticks every 30 min; runRefresh itself decides if it's actually time
- * (min interval), and the budget guards decide if it's safe. Failures are
- * swallowed into the health status — the cache keeps serving regardless. */
 if (SCHEDULER_ENABLED) {
   const tick = async () => {
     const s = await runRefreshSafe({});
@@ -434,11 +366,6 @@ if (SCHEDULER_ENABLED) {
   setInterval(() => auth.pruneSessions(), 6 * 3600 * 1000).unref();
 }
 
-/* ── never-go-down process guards ─────────────────────────────────────────────
- * All persistent writes are atomic (tmp+rename) and every route is wrapped, so
- * an unexpected error here means a bug outside a request path; we log it and
- * keep serving rather than dropping the site. In production ALSO run under a
- * supervisor (pm2/systemd) so even a hard crash (OOM, kill) self-heals. */
 process.on("unhandledRejection", (e) => log.error("unhandledRejection", e));
 process.on("uncaughtException", (e) => { log.error("uncaughtException", e); db.flushSync(); });
 for (const sig of ["SIGINT", "SIGTERM"]) {

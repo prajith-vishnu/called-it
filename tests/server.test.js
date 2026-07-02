@@ -1,9 +1,5 @@
 "use strict";
-/* ============================================================================
- * server.test.js — unit tests for the security-critical server pieces:
- * password hashing, input validation, and the AI-output safety filter.
- * Zero dependencies (node:test), no network, no database writes.
- * ========================================================================== */
+// tests for password hashing, input validation, and the safety filter
 
 const test = require("node:test");
 const assert = require("node:assert/strict");

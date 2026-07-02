@@ -1,15 +1,7 @@
 "use strict";
-/* ============================================================================
- * scoring.test.js — zero-dependency tests (node:test) for the game's scoring
- * engine: base points, beat-the-crowd bonus, streak increment/reset,
- * confidence-stake gain/loss, daily check-in.
- *
- * The engine under test is the REAL one shipped to players: the `Game` module
- * is extracted verbatim from index.html and evaluated in a VM against fixture
- * DATA, so these tests can never drift from the code users actually run.
- * (The server port in server/lib/game.js implements the same math; see
- * server.test.js for the server-side pieces.)
- * ========================================================================== */
+// tests for the scoring engine (points, beat-the-crowd, streaks, confidence,
+// daily check-in). pulls the real Game module out of index.html and runs it
+// in a VM so these tests use the exact code that ships to players.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -17,7 +9,6 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-// ── extract the Game IIFE from index.html ────────────────────────────────────
 function loadGame(DATA) {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   const start = html.indexOf("const Game = (() => {");

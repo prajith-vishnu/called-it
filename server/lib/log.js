@@ -1,13 +1,5 @@
 "use strict";
-/* ============================================================================
- * log.js — tiny structured logger.
- *
- * RULES:
- *   • NEVER log secrets: no passwords, no password hashes, no session tokens,
- *     no API keys, no full request bodies. Callers pass only safe summaries.
- *   • Errors log message + stack (stacks contain file paths, never secrets).
- *   • One line per event, timestamped, greppable: `[2026-07-01T12:00:00Z] level msg {...}`
- * ========================================================================== */
+// simple logger - never pass secrets in as `extra`
 
 function line(level, msg, extra) {
   const ts = new Date().toISOString();

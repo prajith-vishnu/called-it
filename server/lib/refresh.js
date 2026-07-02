@@ -34,7 +34,7 @@ const PUBLIC_JSON = process.env.PUBLIC_JSON_PATH || path.join(REPO_ROOT, "predic
 const MAX_KEEP = 60; // bound how many AI predictions accumulate
 
 const MIN_INTERVAL_MS = 20 * 60 * 60 * 1000; // ~once per day (default: one run/day)
-const NEW_COUNT = 6;                          // new predictions per run
+const NEW_COUNT = 3;                          // new predictions per run (small drips, runs often)
 const MAX_RESOLVE_BATCH = 25;                 // cap closed-pending sent per call
 const INTER_CALL_DELAY_MS = 1200;             // spacing between the 2 calls (never burst; well under 30 RPM)
 const WEB_RESOLUTION = process.env.GROQ_WEB_RESOLUTION !== "off"; // Compound web-search resolution

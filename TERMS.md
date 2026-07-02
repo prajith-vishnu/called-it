@@ -2,7 +2,7 @@
 
 _Last updated: 2026-07-01. Plain-language terms for this portfolio prototype._
 
-1. **Who can use it.** You must be **13 or older** to play.
+1. **Who can use it.** Open to everyone — it's a free, family-friendly game.
 2. **It's a game for fun.** Called It is a free, for-fun prediction game. Points, streaks, ranks, badges, and leaderboard position are **cosmetic status only**. They have **no monetary or real-world value**, cannot be bought, sold, traded, or redeemed for anything, and nothing here is gambling.
 3. **Predictions are entertainment.** Questions and AI-generated content are for fun and may be wrong. Nothing here is advice of any kind.
 4. **No accounts.** There is no login and no personal data. Your progress is stored only in your own browser.

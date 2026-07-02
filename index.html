@@ -391,28 +391,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   </div>
 </div>
 
-<!-- AGE GATE (13+) — shown once on first load, remembered locally. Blocks the app
-     until confirmed. No date of birth is stored — only a yes/no flag in localStorage. -->
-<div class="auth-overlay" id="ageOverlay">
-  <div class="auth-card">
-    <div class="auth-logo">CALLED&nbsp;IT<span style="color:var(--accent-2)">.</span></div>
-    <p class="auth-sub">A free, for-fun prediction game. Cosmetic points only — no money, no prizes.</p>
-    <div class="privacy-body" style="margin-bottom:6px">
-      <p><b>You must be 13 or older to play.</b></p>
-      <p>No account, no login, no personal data. Your progress is saved only in this browser.</p>
-    </div>
-    <button class="auth-submit" id="ageConfirm">I'm 13 or older — let's play</button>
-    <p class="auth-fine"><a href="#" id="openPrivacy">Privacy &amp; Terms</a></p>
-  </div>
-</div>
-
 <!-- PRIVACY / TERMS MODAL (accurate for the localStorage-only, no-account app) -->
 <div class="auth-overlay" id="privacyOverlay">
   <div class="auth-card">
     <button class="auth-x" id="privacyClose">✕</button>
     <h3 style="margin:4px 0 10px">Privacy &amp; Terms</h3>
     <div class="privacy-body">
-      <p><b>For ages 13+.</b> Called It is a free, for-fun prediction game. Points, ranks, and cosmetics are status only — no money, nothing for sale, nothing redeemable.</p>
+      <p><b>Free & for everyone.</b> Called It is a for-fun prediction game. Points, ranks, and cosmetics are status only — no money, nothing for sale, nothing redeemable.</p>
       <p><b>No personal data is collected.</b> There are no accounts, no login, no email, no names, no location, no device IDs, no analytics, and no third-party trackers.</p>
       <p><b>Your progress stays on your device.</b> Your picks, points, streak, and cosmetics are saved only in this browser's localStorage. Clearing your browser data resets the game.</p>
       <p><b>No user-to-user contact.</b> You only choose from preset options — there is no chat, no messaging, and no free-text input to moderate. The leaderboard rivals are illustrative demo players.</p>
@@ -433,6 +418,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 const DATA = (() => {
 
   const CATEGORIES = {
+    sports:   { name:"Sports",              emoji:"⚽", color:"#0ea5e9" },
     music:    { name:"Music",               emoji:"🎵", color:"#f472b6" },
     movies:   { name:"Movies & TV",         emoji:"🎬", color:"#60a5fa" },
     internet: { name:"Internet & Creators", emoji:"🌐", color:"#34d399" },
@@ -511,6 +497,22 @@ const DATA = (() => {
                    future crowd vote)
   ---------------------------------------------------------------------------- */
   const PREDICTIONS = [
+    // ── TEST CARD (closes tomorrow) — remove this one line when you're done testing.
+    //    noShift:true keeps its literal date; closeDate is computed as tomorrow at load.
+    { id:"test-tomorrow", category:"general", question:"[TEST] This card closes tomorrow — pick an option, then resolve it in the dev panel to see the points loop.", options:["Yes","No"], crowd:[6,4], closeDate:(()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})(), pointValue:25, resolution:"pending", noShift:true },
+
+    // ── MARQUEE / "everyone knows this" (real dates, family-friendly). These use
+    //    noShift:true so they show their true close dates. The daily AI job keeps
+    //    adding more like these. Edit freely.
+    { id:"wc_winner",  category:"sports",  question:"Who will win the 2026 FIFA World Cup?", options:["Argentina","Brazil","France","Another team"], crowd:[150,140,120,110], closeDate:"2026-07-19", pointValue:50, resolution:"pending", noShift:true },
+    { id:"wc_pens",    category:"sports",  question:"Will the 2026 World Cup final be decided by a penalty shootout?", options:["Yes","No"], crowd:[95,150], closeDate:"2026-07-19", pointValue:30, resolution:"pending", noShift:true },
+    { id:"wimb_men",   category:"sports",  question:"Who wins the 2026 Wimbledon men's singles title?", options:["Jannik Sinner","Carlos Alcaraz","Novak Djokovic","Another player"], crowd:[150,150,80,70], closeDate:"2026-07-13", pointValue:45, resolution:"pending", noShift:true },
+    { id:"lebron",     category:"sports",  question:"Where will LeBron James start the 2026-27 NBA season?", options:["Lakers","Another team","Retires"], crowd:[170,120,55], closeDate:"2026-10-01", pointValue:40, resolution:"pending", noShift:true },
+    { id:"tswift_wed", category:"trends",  question:"Will Taylor Swift and Travis Kelce get married in 2026?", options:["Yes","No"], crowd:[180,150], closeDate:"2026-12-31", pointValue:30, resolution:"pending", noShift:true },
+    { id:"summer_song",category:"music",   question:"Who will have the #1 song on the Billboard Hot 100 this summer?", options:["Taylor Swift","Sabrina Carpenter","Drake","Someone else"], crowd:[160,130,90,120], closeDate:"2026-09-01", pointValue:40, resolution:"pending", noShift:true },
+    { id:"movie_1b",   category:"movies",  question:"Will a movie released in 2026 gross over $1 billion worldwide?", options:["Yes","No"], crowd:[230,80], closeDate:"2026-12-31", pointValue:20, resolution:"pending", noShift:true },
+    { id:"new_iphone", category:"general", question:"Will Apple announce a new iPhone in 2026?", options:["Yes","No"], crowd:[250,35], closeDate:"2026-12-31", pointValue:15, resolution:"pending", noShift:true },
+
     // ── Music ──
     { id:"m1", category:"music", question:"Will a solo female artist hold the #1 spot on the global singles chart on Aug 31, 2026?", options:["Yes","No"], crowd:[210,90], closeDate:"2026-08-31", pointValue:20, resolution:"pending" },
     { id:"m2", category:"music", question:"Will any K-pop group announce a 2027 world stadium tour before Oct 1, 2026?", options:["Yes","No"], crowd:[140,160], closeDate:"2026-09-30", pointValue:25, resolution:"pending" },
@@ -636,11 +638,16 @@ const Game = (() => {
   const DAY = 86400000;
   const SHIFT = (() => {
     if(!EVERGREEN_DEMO) return 0;
-    const times = DATA.PREDICTIONS.map(p => new Date(p.closeDate+"T23:59:59").getTime());
+    const times = DATA.PREDICTIONS.filter(p=>!p.noShift).map(p => new Date(p.closeDate+"T23:59:59").getTime());
     return (Date.now() + 3*DAY) - Math.min(...times);
   })();
 
-  function closeTime(pred){ return new Date(pred.closeDate+"T23:59:59").getTime() + SHIFT; }
+  // Built-in seed uses the evergreen shift; real AI dates (source:"ai") and flagged
+  // test cards (noShift) keep their literal close date.
+  function closeTime(pred){
+    const base = new Date(pred.closeDate+"T23:59:59").getTime();
+    return base + ((pred.source==="ai" || pred.noShift) ? 0 : SHIFT);
+  }
   function isClosed(pred){ return Date.now() > closeTime(pred); }
   function isResolved(state, id){ return !!state.resolutions[id]; }
   function daysUntilClose(pred){ return Math.ceil((closeTime(pred) - Date.now())/DAY); }
@@ -1442,28 +1449,18 @@ const Sync = (() => {
 })();
 
 /* ════════════════════════════════════════════════════════════════════════════
-   13+ AGE GATE + privacy note.
-   Blocks first-time use until the user confirms they're 13+. The ONLY thing
-   stored is a yes/no flag in localStorage — no date of birth, no personal data.
+   Privacy/Terms wiring. No age gate — the app is open to everyone; content is
+   kept family-friendly by the generation guardrails + safety filter instead.
    ════════════════════════════════════════════════════════════════════════════ */
 const AgeGate = (() => {
-  const KEY = "callit.v1.ageok";
   const $ = s => document.querySelector(s);
   function openPrivacy(e){ if(e) e.preventDefault(); const o=$("#privacyOverlay"); if(o) o.classList.add("show"); }
   function closePrivacy(){ const o=$("#privacyOverlay"); if(o) o.classList.remove("show"); }
   function check(){
-    // Privacy/Terms modal is reachable from the gate and the footer.
     const op=$("#openPrivacy"); if(op) op.addEventListener("click", openPrivacy);
     const fp=$("#footerPrivacy"); if(fp) fp.addEventListener("click", openPrivacy);
     const pc=$("#privacyClose"); if(pc) pc.addEventListener("click", closePrivacy);
     const po=$("#privacyOverlay"); if(po) po.addEventListener("click", e=>{ if(e.target.id==="privacyOverlay") closePrivacy(); });
-
-    let ok=false; try{ ok = localStorage.getItem(KEY)==="1"; }catch(e){}
-    if(ok) return;
-    const ov=$("#ageOverlay"); if(!ov) return;
-    ov.classList.add("show");
-    const btn=$("#ageConfirm");
-    if(btn) btn.addEventListener("click", ()=>{ try{ localStorage.setItem(KEY,"1"); }catch(e){} ov.classList.remove("show"); });
   }
   return { check };
 })();
@@ -1471,7 +1468,7 @@ const AgeGate = (() => {
 
 /* ---- bootstrap ---- */
 (function App(){
-  AgeGate.check();   // 13+ gate (blocks first-time users until confirmed)
+  AgeGate.check();   // wires the Privacy/Terms modal (no age gate; open to everyone)
   UI.init();
   Dev.init();
   window.openDevPanel = Dev.open; // console escape hatch for the owner (local-only; see note)

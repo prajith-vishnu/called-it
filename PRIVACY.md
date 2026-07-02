@@ -3,7 +3,7 @@
 _Last updated: 2026-07-01. Plain-language summary of what the app does and doesn't collect._
 
 ## Who this is for
-Called It is intended for people **13 and older**. You confirm you are 13+ the first time you open it.
+Called It is a free, for-fun game open to **everyone**. Content is kept family-friendly.
 
 ## What we collect
 **Nothing personal — and nothing leaves your device.**

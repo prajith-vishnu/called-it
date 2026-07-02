@@ -35,12 +35,14 @@ const TIMEOUT_MS = 30000;
  * Frozen string — DO NOT vary it per call (varying it defeats prompt caching).
  * It encodes both jobs + the 13+ safety rules + the JSON-only contract. */
 const STABLE_SYSTEM_PROMPT = [
-  "You generate and resolve fun, SFW pop-culture prediction questions for a 13+ trivia game.",
+  "You generate and resolve fun, SFW pop-culture prediction questions for an all-ages trivia game.",
   "Always reply with a single compact JSON object only — no prose, no markdown, no code fences.",
   "When generating (new_predictions): each must be specific and TIME-BOUND (a named deadline),",
-  "objectively resolvable, age-appropriate for 13+, with NO sexual, violent, hateful, illegal,",
+  "objectively resolvable, family-friendly for all ages, with NO sexual, violent, hateful, illegal,",
   "self-harm, or drug/gambling content, and must NOT target real private individuals.",
-  "category must be one of: music, movies, internet, awards, trends, general.",
+  "category must be one of: sports, music, movies, internet, awards, trends, general.",
+  "Everything must be STRICTLY family-friendly for all ages: no politics, elections, politicians, war,",
+  "weapons, crime, disasters, religion, gambling, drugs, or adult/violent content.",
   "options: 2-4 short choices. closeDate: ISO yyyy-mm-dd, 3-9 months in the future.",
   "pointValue: integer 10-60.",
   "When resolving: resolve ONLY when a reliable, widely-reported source clearly confirms the outcome.",
@@ -123,9 +125,13 @@ async function call(model, userText, jsonMode, estTokens) {
 async function generate(n) {
   const today = new Date().toISOString().slice(0, 10);
   const userText =
-    `Today is ${today}. Generate ${n} new predictions about MAJOR, widely-followed events that lots of people care about right now — ` +
-    `e.g. the FIFA World Cup and big sports finals, blockbuster movie releases, chart-topping music, huge award shows, ` +
-    `major tech launches, and viral global moments. Prefer mainstream, popular topics over niche ones. ` +
+    `Today is ${today}. Generate ${n} new predictions about famous, mainstream events that almost EVERYONE recognizes and has an opinion on — ` +
+    `like: FIFA World Cup match winners and the champion, Wimbledon/Grand Slam tennis, NBA stars' next teams and finals, ` +
+    `celebrity relationships and weddings (e.g. Taylor Swift & Travis Kelce), #1 songs and new albums from huge artists, ` +
+    `blockbuster movies and box office, award shows (Grammys/Oscars/VMAs), and major phone/tech launches. ` +
+    `Use the "sports" category for sports. Prefer the biggest, most talked-about topics. ` +
+    `STRICTLY FAMILY-FRIENDLY (all ages): absolutely NO politics, elections, politicians, war, weapons, crime, disasters, ` +
+    `religion, gambling, drugs, or anything violent or adult. Keep it light and fun. ` +
     `Each closeDate MUST be between 2 weeks and 9 months AFTER ${today} (ISO yyyy-mm-dd) — never in the past — so imminent big events are allowed. ` +
     `Respond as {"new_predictions":[...]}.`;
   const r = await call(GEN_MODEL, userText, true, 2000);

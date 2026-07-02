@@ -10,18 +10,25 @@
  * depth), and the renderer only ever emits escaped text — never raw HTML.
  * ========================================================================== */
 
-const KNOWN_CATEGORIES = ["music", "movies", "internet", "awards", "trends", "general"];
+const KNOWN_CATEGORIES = ["sports", "music", "movies", "internet", "awards", "trends", "general"];
 
 // ---- content blocklist (a pragmatic 13+ filter; tune for your needs) --------
 // Anything matching is DISCARDED, never shown. Word-ish boundaries keep it from
 // nuking innocent substrings too aggressively while still being strict.
 const UNSAFE = new RegExp(
   [
+    // sexual / adult
     "porn", "nsfw", "nude", "\\bsex\\b", "sexual", "erotic", "fetish",
+    // violence / self-harm / weapons
     "\\bkill\\b", "murder", "suicide", "self[\\s-]?harm", "\\brape\\b", "abuse",
     "nazi", "terror", "\\bbomb\\b", "shooting", "\\bgun\\b", "weapon",
+    "\\bwar\\b", "invasion", "nuclear", "missile", "\\bcoup\\b", "assassinat", "hostage", "genocide",
+    // drugs / gambling
     "cocaine", "heroin", "meth\\b", "\\bdrugs?\\b", "vape", "alcohol",
-    "gambl", "\\bbet\\b", "casino", "\\bslur\\b", "\\bgore\\b"
+    "gambl", "\\bbet\\b", "casino", "\\bslur\\b", "\\bgore\\b",
+    // divisive politics / crime — keep it fun & family-friendly (not for 13+ game)
+    "\\belection\\b", "\\bpresident\\b", "politician", "parliament", "\\bsenate\\b", "\\bcongress\\b", "impeach",
+    "homicide", "convicted", "\\bverdict\\b"
   ].join("|"),
   "i"
 );

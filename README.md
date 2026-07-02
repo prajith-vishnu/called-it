@@ -53,11 +53,13 @@ This project was built for **Stardance** (Hack Club's NASA-themed challenge). It
 ## How it works
 
 1. Browse open predictions and **tap an option** to lock in your call.
-2. When an event's outcome is known, the question resolves — automatically for
-   clear-cut, well-sourced outcomes (AI web-search resolution, high-confidence
-   only), or manually by the maintainer for anything fuzzy. The AI is
-   instructed to answer "unresolved" rather than guess, so it can never
-   fabricate a result.
+2. When a question's close date passes, the scheduled pipeline asks the AI
+   (with web search) to resolve it. An outcome is applied **only** if the AI
+   reports a clear-cut, well-sourced result with high confidence — it is
+   instructed to answer "unresolved" rather than guess. Everything below that
+   bar lands in a review queue for **manual resolution by the maintainer**,
+   who can also set or override any outcome directly. In short: conservative
+   AI-assist for the obvious cases, a human for everything else.
 3. **Correct calls earn points** (plus beat-the-crowd, streak, and confidence
    bonuses); climb the ranks, unlock cosmetics, and defend your leaderboard
    spot.

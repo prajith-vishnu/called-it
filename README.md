@@ -122,7 +122,7 @@ pm2/systemd so crashes self-heal. Full backend docs: [server/README.md](server/R
 
 ## Live demo
 
-▶️ **<https://prajith-vishnu.github.io/called-it/>** *(enable GitHub Pages to activate — see repo Settings → Pages)*
+▶️ **<https://prajith-vishnu.github.io/called-it/>** — live now, refreshed with new AI predictions on schedule (installable as an app from your phone's browser)
 
 ## License
 

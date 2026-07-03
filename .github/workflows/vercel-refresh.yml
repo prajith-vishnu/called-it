@@ -1,0 +1,36 @@
+# Keeps the LIVE Vercel deployment's predictions fresh. This is separate from
+# refresh.yml (which still keeps the static GitHub Pages guest-mode copy of
+# predictions.json fresh) - this one calls the real deployed backend instead
+# of running the generator against local files, since on Vercel the cache
+# lives in Redis, not a file this workflow can commit.
+#
+# Needs two repo secrets:
+#   VERCEL_APP_URL        e.g. https://called-it.vercel.app (no trailing slash)
+#   ADMIN_REFRESH_TOKEN   must match the same-named env var set on the Vercel project
+name: Vercel predictions refresh
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: vercel-predictions-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the deployed /api/refresh endpoint
+        env:
+          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
+          ADMIN_REFRESH_TOKEN: ${{ secrets.ADMIN_REFRESH_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_APP_URL" ]; then
+            echo "VERCEL_APP_URL secret not set yet - skipping (set it once the app is deployed)."
+            exit 0
+          fi
+          curl -sS -X POST "$VERCEL_APP_URL/api/refresh" \
+            -H "x-admin-token: $ADMIN_REFRESH_TOKEN" \
+            --fail-with-body

@@ -4,7 +4,9 @@ Called It is a prediction game I built for Hack Club. It's based on prediction m
 
 The part I struggled with most was getting the backend working and hooking up the Groq API — I learned a lot doing it. That API gets called a few times a day in the background to pull in new predictions and update old ones, so the feed stays fresh without anyone having to touch it.
 
-Try it here: https://prajith-vishnu.github.io/called-it/
+Try it here: https://called-it-self.vercel.app (accounts + a real leaderboard that syncs across devices)
+
+There's also a static version at https://prajith-vishnu.github.io/called-it/ — same game, but since GitHub Pages can't run a server, that one only works as a guest (no accounts, nothing synced across devices).
 
 ![feed](docs/feed.png) ![locked in](docs/locked-in.png) ![beat the crowd](docs/celebration.png)
 
@@ -28,6 +30,17 @@ cp ../.env.example .env
 # add your own Groq API key in .env
 npm start
 ```
+
+## Deploying it (Vercel)
+
+The live version above runs on Vercel. It's serverless, so instead of the local `db.json` file it stores everything in a small Redis database (I used Upstash, which has a free tier). To deploy your own:
+
+1. Import the repo into Vercel.
+2. In the project's Storage tab, add an Upstash Redis database and connect it — that sets `KV_REST_API_URL` and `KV_REST_API_TOKEN` automatically, which is all the code needs to switch from local files to Redis.
+3. Add `GROQ_API_KEY` and `ADMIN_REFRESH_TOKEN` as environment variables too.
+4. Deploy. `vercel.json` handles routing `/api/*` to the backend and sets up a daily cron as a backup refresh trigger.
+
+The GitHub Actions workflow that keeps predictions fresh every few hours (`.github/workflows/vercel-refresh.yml`) needs two repo secrets to actually call your deployment: `VERCEL_APP_URL` (your deployed URL) and `ADMIN_REFRESH_TOKEN` (same value as step 3).
 
 ## AI use
 

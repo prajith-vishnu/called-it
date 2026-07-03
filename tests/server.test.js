@@ -11,6 +11,16 @@ process.env.DB_PATH = path.join(__dirname, ".tmp-test-db.json");
 const auth = require("../server/lib/auth");
 const { sanitizeNewPrediction, sanitizeResolution, cleanText } = require("../server/lib/safety");
 const { parseDur } = require("../server/lib/ratelimit");
+const kv = require("../server/lib/kv");
+
+// ── KV adapter falls back to local files when no Redis is configured ────────
+test("kv.hasKV is false with no env vars (local dev falls back to files)", () => {
+  assert.equal(kv.hasKV, false);
+});
+test("kvGetJSON/kvSetJSON no-op safely when KV isn't configured", async () => {
+  assert.equal(await kv.kvGetJSON("anything", "fallback"), "fallback");
+  assert.equal(await kv.kvSetJSON("anything", { a: 1 }), false);
+});
 
 // ── password hashing ─────────────────────────────────────────────────────────
 test("passwords hash with scrypt and verify round-trip", () => {

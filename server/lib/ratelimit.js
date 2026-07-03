@@ -4,21 +4,45 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const kv = require("./kv");
 
 const FILE = path.join(__dirname, "..", "data", "ratelimit.json");
+const KV_KEY = "calledit:ratelimit";
 const SAFETY_MARGIN = 0.8;
 const TOKEN_FLOOR = 2000;
 
 const MAX_CALLS_PER_DAY = Math.max(1, Number(process.env.GROQ_MAX_CALLS_PER_DAY) || 40);
 const utcDay = () => new Date().toISOString().slice(0, 10);
 
-function read() { try { return JSON.parse(fs.readFileSync(FILE, "utf8")); } catch (e) { return {}; } }
+// KV mode: read/written from an in-memory copy hydrated once per request (see
+// hydrateBudget/persistBudget below). Local mode: the CLI script and the dev
+// server are separate processes that only share state through this file, so
+// every read/write goes straight to disk, same as always.
+let kvState = null;
+let kvDirty = false;
+
+function read() {
+  if (kv.hasKV) return kvState || {};
+  try { return JSON.parse(fs.readFileSync(FILE, "utf8")); } catch (e) { return {}; }
+}
 function write(o) {
+  if (kv.hasKV) { kvState = o; kvDirty = true; return; }
   try {
     const dir = path.dirname(FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(FILE, JSON.stringify(o, null, 2));
   } catch (e) {}
+}
+
+async function hydrateBudget() {
+  if (!kv.hasKV) return;
+  kvState = await kv.kvGetJSON(KV_KEY, {});
+  kvDirty = false;
+}
+async function persistBudget() {
+  if (!kv.hasKV || !kvDirty) return;
+  kvDirty = false;
+  await kv.kvSetJSON(KV_KEY, kvState || {});
 }
 
 function num(v) { const n = Number(v); return Number.isFinite(n) ? n : undefined; }
@@ -98,4 +122,4 @@ function status(provider) {
   };
 }
 
-module.exports = { canProceed, record, note429, parseDur, status, SAFETY_MARGIN, MAX_CALLS_PER_DAY };
+module.exports = { canProceed, record, note429, parseDur, status, hydrateBudget, persistBudget, SAFETY_MARGIN, MAX_CALLS_PER_DAY };

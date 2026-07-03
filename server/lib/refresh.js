@@ -6,10 +6,12 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { generate, resolveClosed } = require("./groq");
 const { sanitizeNewPrediction, sanitizeResolution } = require("./safety");
+const kv = require("./kv");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const SEED_FILE = path.join(DATA_DIR, "predictions.seed.json");
 const CACHE_FILE = path.join(DATA_DIR, "cache.json");
+const KV_KEY = "calledit:cache";
 const REPO_ROOT = path.join(__dirname, "..", "..");
 const PUBLIC_JSON = process.env.PUBLIC_JSON_PATH || path.join(REPO_ROOT, "predictions.json");
 const MAX_KEEP = 60;
@@ -31,19 +33,48 @@ function emptyCache() {
   return { lastRun: 0, predictions: [], resolutions: [], reviewQueue: [], runs: 0 };
 }
 
-function loadCache() {
-  const c = readJSON(CACHE_FILE, null);
-  if (c) return c;
+function seedFromPublicJson() {
   const pub = readJSON(PUBLIC_JSON, null);
   if (pub) return { lastRun: pub.lastRun || 0, predictions: pub.predictions || [], resolutions: pub.resolutions || [], reviewQueue: [], runs: 0 };
   return emptyCache();
 }
 
+let cachedCache = null;
+let cacheDirty = false;
+
+// Sync accessor used everywhere (game.js, server.js). On a serverless deploy,
+// call hydrateCache() once per request first; locally this reads the file
+// itself the first time it's called, same as before.
+function loadCache() {
+  if (cachedCache) return cachedCache;
+  if (kv.hasKV) { cachedCache = emptyCache(); return cachedCache; }
+  cachedCache = readJSON(CACHE_FILE, null) || seedFromPublicJson();
+  return cachedCache;
+}
+
 function saveCache(cache) {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  const tmp = CACHE_FILE + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(cache, null, 2));
-  fs.renameSync(tmp, CACHE_FILE);
+  cachedCache = cache;
+  cacheDirty = true;
+  if (kv.hasKV) return; // persisted explicitly via persistCache() at the end of the request
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    const tmp = CACHE_FILE + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(cache, null, 2));
+    fs.renameSync(tmp, CACHE_FILE);
+    cacheDirty = false;
+  } catch (e) {}
+}
+
+async function hydrateCache() {
+  if (!kv.hasKV) return;
+  cachedCache = await kv.kvGetJSON(KV_KEY, null);
+  if (!cachedCache) cachedCache = seedFromPublicJson();
+}
+
+async function persistCache() {
+  if (!kv.hasKV || !cacheDirty || !cachedCache) return;
+  cacheDirty = false;
+  await kv.kvSetJSON(KV_KEY, cachedCache);
 }
 
 function publicView(cache) {
@@ -175,4 +206,4 @@ function getPipelineStatus() {
   });
 }
 
-module.exports = { runRefresh, runRefreshSafe, getPipelineStatus, loadCache, saveCache, publicView, CACHE_FILE, emptyCache };
+module.exports = { runRefresh, runRefreshSafe, getPipelineStatus, loadCache, saveCache, hydrateCache, persistCache, publicView, CACHE_FILE, emptyCache };

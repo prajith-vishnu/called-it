@@ -14,27 +14,32 @@
 <title>Called It — a free, status-based prediction game</title>
 
 <style>
+/* Palette: warm kraft-paper / ticket-stub tones, not another blue-and-white
+   SaaS template. The accent is a stamped-ink red, points stay gold like foil
+   on a winning stub. Cards below are shaped like actual ticket stubs (see
+   .card's perforation notches) since this is, literally, a game about
+   calling outcomes - the raffle-ticket motif isn't just a color swap. */
 :root,[data-theme="default"]{
-  --grad:#f6f5f0; --bg-0:#fdfcf8; --card:#fffefb; --card-2:#f1efe6; --stroke:#d8d3c4;
-  --text:#171512; --muted:#6b665c;
-  --accent:#1652f0; --accent-2:#3f7bff; --accent-soft:rgba(22,82,240,.10);
-  --good:#16a34a; --bad:#e5484d; --gold:#a8710a; --crowd:rgba(22,82,240,.07);
-  --shadow:3px 3px 0 rgba(23,21,18,.12);
+  --grad:#e8dfc7; --bg-0:#f4edd9; --card:#faf4e3; --card-2:#efe6cd; --stroke:#c7b98f;
+  --text:#2b2317; --muted:#7c6f52;
+  --accent:#a8271f; --accent-2:#c73b30; --accent-soft:rgba(168,39,31,.10);
+  --good:#3f7d3a; --bad:#a8271f; --gold:#9c6b0a; --crowd:rgba(168,39,31,.07);
+  --shadow:3px 3px 0 rgba(43,35,23,.16);
 }
-[data-theme="sunset"]{--accent:#f97316;--accent-2:#fb923c;--accent-soft:rgba(249,115,22,.10);--crowd:rgba(249,115,22,.07);}
-[data-theme="mint"]{--accent:#0d9488;--accent-2:#14b8a6;--accent-soft:rgba(13,148,136,.10);--crowd:rgba(13,148,136,.07);}
-[data-theme="bubblegum"]{--accent:#db2777;--accent-2:#ec4899;--accent-soft:rgba(219,39,119,.10);--crowd:rgba(219,39,119,.07);}
-[data-theme="gold"]{--accent:#b45309;--accent-2:#d97706;--accent-soft:rgba(180,83,9,.10);--crowd:rgba(180,83,9,.07);--gold:#b45309;}
+[data-theme="sunset"]{--accent:#c2560c;--accent-2:#e07a2e;--accent-soft:rgba(194,86,12,.10);--crowd:rgba(194,86,12,.07);}
+[data-theme="mint"]{--accent:#0d7d6e;--accent-2:#159c89;--accent-soft:rgba(13,125,110,.10);--crowd:rgba(13,125,110,.07);}
+[data-theme="bubblegum"]{--accent:#a6215f;--accent-2:#c73f7f;--accent-soft:rgba(166,33,95,.10);--crowd:rgba(166,33,95,.07);}
+[data-theme="gold"]{--accent:#8a5a06;--accent-2:#ab7412;--accent-soft:rgba(138,90,6,.10);--crowd:rgba(138,90,6,.07);--gold:#8a5a06;}
 [data-theme="midnight"]{
-  --grad:#0c0d10; --bg-0:#121316; --card:#17181c; --card-2:#1e2024; --stroke:#34363b;
-  --text:#f0efe9; --muted:#96938a; --accent:#4f8cff; --accent-2:#6ea8ff; --accent-soft:rgba(79,140,255,.16);
-  --good:#34d399; --bad:#fb7185; --gold:#fbbf24; --crowd:rgba(79,140,255,.14);
+  --grad:#141110; --bg-0:#1b1714; --card:#221c17; --card-2:#2a2219; --stroke:#453a2c;
+  --text:#f0e6d2; --muted:#a8987a; --accent:#e0574a; --accent-2:#ea7266; --accent-soft:rgba(224,87,74,.16);
+  --good:#6fbf68; --bad:#e0574a; --gold:#e0b23c; --crowd:rgba(224,87,74,.14);
   --shadow:3px 3px 0 rgba(0,0,0,.5);
 }
 /* dark mode toggle, separate from the midnight theme */
 [data-mode="dark"]{
-  --grad:#0c0d10; --bg-0:#121316; --card:#17181c; --card-2:#1e2024; --stroke:#34363b;
-  --text:#f0efe9; --muted:#96938a; --shadow:3px 3px 0 rgba(0,0,0,.5);
+  --grad:#141110; --bg-0:#1b1714; --card:#221c17; --card-2:#2a2219; --stroke:#453a2c;
+  --text:#f0e6d2; --muted:#a8987a; --shadow:3px 3px 0 rgba(0,0,0,.5);
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -42,6 +47,8 @@ html,body{margin:0;padding:0;height:100%;}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   background:var(--grad); color:var(--text);
+  background-image:radial-gradient(color-mix(in srgb,var(--text) 4%,transparent) 1px,transparent 1.4px);
+  background-size:11px 11px;
   -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
   font-size:15px; line-height:1.45; letter-spacing:-.006em;
   overscroll-behavior-y:none; transition:background .3s ease,color .3s ease;
@@ -53,12 +60,12 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 
 /* HEADER */
-.app-header{position:sticky;top:0;z-index:40;padding:calc(12px + env(safe-area-inset-top)) 18px 12px;display:flex;align-items:center;gap:8px;background:var(--bg-0);border-bottom:2px solid var(--text);}
-.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:-.03em;color:var(--text);user-select:none;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
-.logo-mark{width:26px;height:26px;border-radius:6px;background:var(--accent);border:2px solid var(--text);display:grid;place-items:center;flex:0 0 auto;}
+.app-header{position:sticky;top:0;z-index:40;padding:calc(12px + env(safe-area-inset-top)) 18px 12px;display:flex;align-items:center;gap:8px;background:var(--bg-0);border-bottom:2px dashed var(--stroke);}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;letter-spacing:.02em;color:var(--text);user-select:none;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;text-transform:uppercase;}
+.logo-mark{width:26px;height:26px;border-radius:4px;background:var(--accent);border:2px solid var(--text);display:grid;place-items:center;flex:0 0 auto;transform:rotate(-4deg);}
 .logo-word{color:var(--text);}
 .header-spacer{flex:1;}
-.stat-pill{display:flex;align-items:center;gap:6px;background:var(--card-2);border:2px solid var(--stroke);padding:6px 11px;border-radius:7px;font-weight:700;font-size:13.5px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.stat-pill{display:flex;align-items:center;gap:6px;background:var(--card-2);border:2px solid var(--stroke);padding:6px 11px;border-radius:5px;font-weight:700;font-size:13.5px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .stat-pill .label{color:var(--muted);font-weight:600;font-size:12px;}
 #hdrPoints{color:var(--gold);}
 .streak-pill .flame{display:inline-block;animation:flicker 1.4s ease-in-out infinite;}
@@ -69,7 +76,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .view{display:none;padding:14px 18px 24px;animation:fadeUp .3s ease;}
 .view.active{display:block;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
-.view-title{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:4px 0 2px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.view-title{font-size:22px;font-weight:800;letter-spacing:.01em;margin:4px 0 2px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;text-transform:uppercase;}
 .view-sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;}
 
 /* CATEGORY CHIPS */
@@ -84,13 +91,17 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .chip.active{color:#fff;border-color:var(--text);background:var(--accent);}
 .chip:active{transform:scale(.95);}
 
-/* MARKET CARD */
+/* MARKET CARD — shaped like a ticket stub: a dashed perforation with punched
+   notches separates the category/close-date stub from the call itself. */
 .card{background:var(--card);border:2px solid var(--stroke);border-radius:10px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;box-shadow:var(--shadow);animation:cardIn .35s ease backwards;}
 @keyframes cardIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
 .card.locked-flash{animation:lockFlash .6s ease;}
 @keyframes lockFlash{0%{box-shadow:0 0 0 0 var(--accent);}40%{box-shadow:0 0 0 3px var(--accent-soft),var(--shadow);}100%{box-shadow:var(--shadow);}}
-.card-top{display:flex;align-items:center;gap:8px;margin-bottom:11px;}
-.cat-tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:6px;background:var(--card-2);border:1px solid var(--stroke);}
+.card-top{display:flex;align-items:center;gap:8px;margin:-16px -16px 15px;padding:11px 20px;border-bottom:2px dashed var(--stroke);position:relative;}
+.card-top::before,.card-top::after{content:"";position:absolute;top:100%;transform:translateY(-50%);width:16px;height:16px;border-radius:50%;background:var(--grad);}
+.card-top::before{left:-8px;}
+.card-top::after{right:-8px;}
+.cat-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:4px 9px;border-radius:5px;background:var(--card-2);border:1px solid var(--stroke);text-transform:uppercase;letter-spacing:.04em;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
 .close-info{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--muted);text-align:right;}
 .close-info.soon{color:var(--accent);font-weight:700;}
 .close-info.urgent{color:var(--bad);font-weight:800;animation:urgentPulse 1.6s ease-in-out infinite;}
@@ -107,29 +118,30 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .points-tag{font-size:11.5px;font-weight:800;color:var(--gold);}
 .q-text{font-size:16px;font-weight:700;line-height:1.35;margin:2px 0 13px;letter-spacing:-.01em;}
 
-/* OUTCOME OPTIONS — label left, crowd % right, subtle belief bar behind */
+/* OUTCOME OPTIONS — dashed like a tear-off choice until you call it, then it
+   "stamps" solid in whichever color the pick locked in as. */
 .options{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.option{position:relative;text-align:center;background:var(--card);border:2px solid var(--stroke);border-radius:8px;padding:11px 12px;min-height:56px;font-size:14.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .1s,border-color .15s,background .15s,color .15s;}
+.option{position:relative;text-align:center;background:var(--card);border:2px dashed var(--stroke);border-radius:8px;padding:11px 12px;min-height:56px;font-size:14.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .1s,border-color .15s,background .15s,color .15s;}
 .option:active{transform:scale(.97);}
 .option .opt-label{max-width:100%;line-height:1.2;}
 .option .opt-pct{font-size:12.5px;font-weight:800;opacity:.75;font-variant-numeric:tabular-nums;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
-.option.opt-yes{color:var(--good);border-color:rgba(22,163,74,.32);}
-.option.opt-no{color:var(--bad);border-color:rgba(229,72,77,.32);}
+.option.opt-yes{color:var(--good);border-color:color-mix(in srgb,var(--good) 45%,var(--stroke));}
+.option.opt-no{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,var(--stroke));}
 .option.opt-lead,.option.opt-other{color:var(--text);}
-.option.picked{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
-.option.picked.opt-yes{border-color:var(--good);background:rgba(22,163,74,.15);color:var(--good);}
-.option.picked.opt-no{border-color:var(--bad);background:rgba(229,72,77,.15);color:var(--bad);}
+.option.picked{border-style:solid;border-color:var(--accent);background:var(--accent-soft);color:var(--accent);transform:rotate(-.6deg);}
+.option.picked.opt-yes{border-color:var(--good);background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good);}
+.option.picked.opt-no{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad);}
 .option.disabled{pointer-events:none;}
 .option.dim{opacity:.5;}
-.option.correct{border-color:var(--good);background:rgba(22,163,74,.14);color:var(--good);}
-.option.wrong{border-color:var(--bad);background:rgba(229,72,77,.12);color:var(--bad);}
+.option.correct{border-style:solid;border-color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent);color:var(--good);}
+.option.wrong{border-style:solid;border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--bad);}
 
 /* green/red probability bar */
 .probbar{display:flex;gap:2px;height:8px;border-radius:3px;overflow:hidden;background:var(--card-2);margin:0 0 12px;border:1px solid var(--stroke);}
 .probbar .seg{height:100%;transition:width .6s cubic-bezier(.2,.9,.2,1);}
 .probbar .seg-yes,.probbar .seg-lead{background:var(--good);}
 .probbar .seg-no{background:var(--bad);}
-.probbar .seg-other{background:#c3c9d2;}
+.probbar .seg-other{background:var(--muted);}
 .vol{font-size:11.5px;font-weight:600;color:var(--muted);margin-top:10px;text-align:center;}
 
 /* CONFIDENCE STAKE */
@@ -239,8 +251,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .celebrate-card{text-align:center;transform:scale(.7);transition:transform .45s cubic-bezier(.2,1.5,.4,1);max-width:340px;background:var(--card);border:2px solid var(--text);border-radius:14px;padding:28px 24px;box-shadow:6px 6px 0 rgba(23,21,18,.2);}
 .celebrate.show .celebrate-card{transform:scale(1);}
 .celebrate .kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;}
-.celebrate .headline{font-size:32px;font-weight:800;line-height:1.05;margin:8px 0 12px;letter-spacing:-.02em;color:var(--accent);animation:pop .6s ease;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
-@keyframes pop{0%{transform:scale(.5);}60%{transform:scale(1.1);}100%{transform:scale(1);}}
+/* the headline reads like a rubber stamp slapped down on the ticket */
+.celebrate .headline{font-size:30px;font-weight:800;line-height:1.05;margin:10px 0 12px;letter-spacing:.03em;color:var(--accent);animation:pop .6s ease;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;text-transform:uppercase;display:inline-block;padding:6px 14px;border:3px solid var(--accent);border-radius:6px;transform:rotate(-3deg);}
+@keyframes pop{0%{transform:rotate(-3deg) scale(.5);}60%{transform:rotate(-3deg) scale(1.08);}100%{transform:rotate(-3deg) scale(1);}}
 .celebrate .big-emoji{font-size:58px;animation:spinPop .7s ease;}
 @keyframes spinPop{0%{transform:rotate(-25deg) scale(0);}70%{transform:rotate(8deg) scale(1.15);}100%{transform:none;}}
 .celebrate .detail{color:var(--text);font-size:14.5px;font-weight:600;margin-top:6px;}
@@ -249,10 +262,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .celebrate .tap-hint{color:var(--muted);font-size:12px;margin-top:22px;font-weight:500;}
 /* contrarian win — the core thrill gets extra gold flair */
 .celebrate-card.contrarian{border-color:var(--gold);box-shadow:6px 6px 0 var(--gold);}
-.celebrate-card.contrarian .headline{color:var(--gold);}
+.celebrate-card.contrarian .headline{color:var(--gold);border-color:var(--gold);}
 .celebrate-card.contrarian .kicker{color:var(--gold);}
-/* gentle miss reveal — calm, no fireworks */
-.celebrate-card.miss .headline{color:var(--text);font-size:26px;}
+/* gentle miss reveal — calm, no fireworks, no stamp box */
+.celebrate-card.miss .headline{color:var(--muted);font-size:22px;border-color:var(--stroke);transform:none;text-transform:none;letter-spacing:0;animation:none;}
 
 /* PROFILE STORY */
 .story-card{display:flex;align-items:center;gap:13px;background:var(--card);border:2px solid var(--stroke);border-radius:9px;padding:14px;box-shadow:var(--shadow);margin-bottom:10px;}
@@ -2051,7 +2064,11 @@ const Dev = (() => {
 })();
 
 const Sync = (() => {
-  const FEED_URL = (typeof window !== "undefined" && window.CALLED_IT_PREDICTIONS_URL) || "predictions.json";
+  // Prefer the live backend (real crowd counts, no stale snapshot). Falls
+  // back to the static predictions.json file for GitHub-Pages-only hosting
+  // where there's no /api/* at all.
+  const FEED_URL = (typeof window !== "undefined" && window.CALLED_IT_PREDICTIONS_URL) || "/api/predictions";
+  const FEED_URL_FALLBACK = "predictions.json";
   const KNOWN_CATS = Object.keys(DATA.CATEGORIES);
 
   const UNSAFE = /(porn|sex|nude|nsfw|kill|murder|suicide|self[\s-]?harm|rape|nazi|terror|bomb|gun\b|drug|cocaine|slur|gore|gambl)/i;
@@ -2115,26 +2132,30 @@ const Sync = (() => {
     });
   }
 
+  async function fetchFeed(url){
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+    try{
+      const res = await fetch(url, { signal: ctrl.signal, headers: { "accept": "application/json" }, cache: "no-store" });
+      if(!res.ok) return null;
+      const data = await res.json();
+      return (data && typeof data === "object") ? data : null;
+    }catch(e){
+      return null;
+    }finally{ clearTimeout(timer); }
+  }
+
   async function pull(){
     if(typeof fetch !== "function") return;
-    try{
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 6000);
-      const res = await fetch(FEED_URL, { signal: ctrl.signal, headers: { "accept": "application/json" }, cache: "no-store" });
-      clearTimeout(timer);
-      if(!res.ok) return;
-      const data = await res.json();
-      if(!data || typeof data !== "object") return;
-      let added = 0;
-      (Array.isArray(data.predictions) ? data.predictions : []).slice(0, 50).forEach(raw => {
-        const p = validateNewPrediction(raw);
-        if(p && !DATA.byId[p.id]){ DATA.PREDICTIONS.push(p); DATA.byId[p.id] = p; added++; }
-      });
-      applyResolutions(data.resolutions);
-      if(added) UI.rerender();
-    }catch(e){
-      /* offline / no backend / bad payload → keep running on built-in data */
-    }
+    const data = (await fetchFeed(FEED_URL)) || (await fetchFeed(FEED_URL_FALLBACK));
+    if(!data) return;  // offline / no backend anywhere → keep running on built-in data
+    let added = 0;
+    (Array.isArray(data.predictions) ? data.predictions : []).slice(0, 50).forEach(raw => {
+      const p = validateNewPrediction(raw);
+      if(p && !DATA.byId[p.id]){ DATA.PREDICTIONS.push(p); DATA.byId[p.id] = p; added++; }
+    });
+    applyResolutions(data.resolutions);
+    if(added) UI.rerender();
   }
   return { pull, validateNewPrediction };
 })();
